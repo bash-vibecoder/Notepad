@@ -7,9 +7,12 @@ editions keep editing local. Windows 1.2.0 uses native C++/Scintilla based on
 Notepad++ 8.9.9.1. Android and Linux use the independent bundled CodeMirror
 editor; those editions block remote navigation and network requests.
 
-[Download Android APK](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.0),
-[small native Windows installers](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.2.0),
-or [small Linux .deb and portable archive](https://github.com/bash-vibecoder/Notepad/releases/tag/linux-v1.3.0).
+[Download the current release — all platforms](https://github.com/bash-vibecoder/Notepad/releases/latest).
+It includes native Windows x86/x64 installers and portable ZIPs (1.2.0), small
+Linux `.deb` and portable `.tar.xz` packages (1.3.0), and the current Android APK
+(1.0, including ARMv7), plus the Windows corresponding source and SHA-256
+checksums. These are the latest builds for each platform; their actual version
+numbers are retained in the filenames.
 
 The Android APK supports Android 8.0 or newer and runs on ARM64, ARMv7, and x86;
 it contains no architecture-specific native libraries. Desktop releases provide
