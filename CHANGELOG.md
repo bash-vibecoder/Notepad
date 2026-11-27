@@ -1,3 +1,26 @@
+# AnoteP 1.4.0 — one editor, one version
+
+All Android, Windows and Linux variants are rebuilt as 1.4.0. Root VERSION
+controls internal versions, package metadata, About dialogs and filenames;
+publication rejects stale versions and differing editor assets.
+
+Windows now uses the same AnoteP editor assets as the Android APK and Linux,
+instead of the separate Notepad++ UI. This brings the APK's automatic language
+detection, manual override, coding keys/modifiers, menus, local macros, split
+views, recovery and offline UI behavior to Windows. A small original C++/Win32
+host supplies native file dialogs, clipboard, encodings and atomic storage.
+Prior native session/backup text is imported without changing the originals.
+The shared editor also snapshots during continuous typing, not just after idle.
+
+No engine/runtime is bundled or downloaded by the app. Windows requires the
+system WebView2 Runtime; Linux requires system WebKitGTK and Python/GTK. Those
+runtime sizes are separate. Windows app downloads are capped below 5 MiB;
+Android and Linux app downloads below 1 MiB. The Android APK is rebuilt with
+its existing signing identity even where Android features are unchanged.
+
+See docs/FEATURES.md for the feature inventory, native adapter differences,
+shared limits and legacy native-preference migration limits.
+
 # AnoteP Windows 1.2.1
 
 Fixes scratch tabs disappearing after closing: normal launches enable session

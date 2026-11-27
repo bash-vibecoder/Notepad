@@ -1,30 +1,57 @@
-name: Publish current platform variants
+name: Publish one unified AnoteP release
 
 on:
   workflow_dispatch:
     inputs:
       release_id:
-        description: Existing draft release ID to fill and publish
+        description: Draft containing the newly signed Android APK
         required: true
         type: string
-      release_tag:
-        description: Expected consolidated release tag
+      windows_run:
+        description: Successful shared Windows packages workflow run
         required: true
-        default: v1.3.1
+        type: string
+      linux_run:
+        description: Successful shared Linux packages workflow run
+        required: true
         type: string
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_ID: ${{ inputs.release_id }}
-      RELEASE_TAG: ${{ inputs.release_tag }}
+      WINDOWS_RUN: ${{ inputs.windows_run }}
+      LINUX_RUN: ${{ inputs.linux_run }}
     steps:
       - uses: actions/checkout@v4
-      - name: Transfer only verified current variants and publish
-        run: python3 scripts/publish-current.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate successful builds from this repository
+        run: python3 scripts/publish-current.py validate
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.windows_run }}
+          pattern: windows-shared-*
+          path: release
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.linux_run }}
+          name: linux-small-x64
+          path: release
+      - name: Install Android package audit tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends aapt apksigner
+      - name: Audit and publish all variants at the exact same version
+        run: python3 scripts/publish-current.py publish

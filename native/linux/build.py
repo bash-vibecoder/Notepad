@@ -5,12 +5,13 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-VERSION = '1.3.0'
+VERSION = (ROOT / 'VERSION').read_text().strip()
 OUTPUT = ROOT / 'release'
 EPOCH = int(os.environ.get('SOURCE_DATE_EPOCH', '1795737600'))  # 2026-11-27 UTC
 LIMIT = 1024 * 1024
@@ -24,7 +25,7 @@ def write(path, text, executable=False):
 
 def payload(target):
     target.mkdir(parents=True, exist_ok=True)
-    for name in ('main.py', 'core.py', 'bridge.js'):
+    for name in ('main.py', 'core.py', 'bridge.js', 'version.py'):
         shutil.copyfile(HERE / name, target / name)
     shutil.copytree(ROOT / 'app/src/main/assets', target / 'assets')
     shutil.copyfile(ROOT / 'LICENSE', target / 'LICENSE')
@@ -34,6 +35,7 @@ def payload(target):
 
 
 def main():
+    subprocess.run([sys.executable, str(ROOT / 'scripts/sync-version.py'), '--check'], check=True)
     OUTPUT.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='anotep-linux-build-') as temporary:
         temporary = Path(temporary)

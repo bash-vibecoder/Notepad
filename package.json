@@ -1,85 +1,22 @@
 {
   "name": "anotep",
   "productName": "AnoteP",
-  "version": "1.1.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Offline local text and source-code editor",
   "author": "AnoteP contributors <bash-vibecoder@users.noreply.github.com>",
   "license": "MIT",
   "homepage": "https://github.com/bash-vibecoder/Notepad",
-  "main": "desktop/main.cjs",
   "scripts": {
     "test": "node --test tests/desktop-core.test.cjs",
-    "test:desktop": "node scripts/desktop-integration.cjs",
+    "test:desktop": "python3 native/linux/smoke-test.py",
     "icons": "node scripts/build-desktop-icons.cjs",
-    "dist": "node scripts/build-desktop.cjs"
+    "dist": "node scripts/build-desktop.cjs",
+    "test:version": "python3 scripts/sync-version.py --check",
+    "test:browser": "node scripts/browser-test.cjs"
   },
   "devDependencies": {
-    "electron": "43.8.13",
-    "electron-builder": "26.18.0",
     "playwright": "1.65.1",
     "sharp": "0.35.5"
-  },
-  "build": {
-    "appId": "app.anotep.editor",
-    "productName": "AnoteP",
-    "asar": true,
-    "directories": {
-      "buildResources": "desktop/icons",
-      "output": "release"
-    },
-    "files": [
-      "desktop/main.cjs",
-      "desktop/preload.cjs",
-      "desktop/core.cjs",
-      "desktop/icons/**/*",
-      "app/src/main/assets/**/*",
-      "package.json"
-    ],
-    "artifactName": "AnoteP-${version}-${os}-${arch}.${ext}",
-    "win": {
-      "icon": "desktop/icons/anotep.ico",
-      "target": [
-        "nsis"
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "AnoteP",
-      "uninstallDisplayName": "AnoteP",
-      "installerIcon": "desktop/icons/anotep.ico",
-      "uninstallerIcon": "desktop/icons/anotep.ico"
-    },
-    "linux": {
-      "icon": "desktop/icons/anotep.png",
-      "category": "Utility;TextEditor;",
-      "target": [
-        "AppImage",
-        "deb"
-      ]
-    },
-    "deb": {
-      "depends": [
-        "libasound2",
-        "libatk-bridge2.0-0",
-        "libatk1.0-0",
-        "libatspi2.0-0",
-        "libcups2",
-        "libdrm2",
-        "libgbm1",
-        "libgtk-3-0",
-        "libnss3",
-        "libxcomposite1",
-        "libxdamage1",
-        "libxfixes3",
-        "libxkbcommon0",
-        "libxrandr2",
-        "libxss1",
-        "libxtst6"
-      ]
-    }
   }
 }

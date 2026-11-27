@@ -7,6 +7,7 @@
   const modifiers = {shift:false,ctrl:false,alt:false};
   let menuName = '', dialogResolve = null, persistTimer, toastTimer, searchTimer, requestCounter = 0;
   let searchMarks = [], matches = [], queryError = '', lastSearchKey = '', loading = true, restored = false;
+  let recoveryChanged = false;
   let activeMenuButton = null, recording = false, replaying = false, commandDepth = 0, macroSteps = [];
   const pending = new Map(), saves = new Map(), detectTimers = new Map();
   const current = () => documents.find(d => d.id === activeId);
@@ -33,9 +34,11 @@
       cursor:d.cm.getCursor(), scroll:d.cm.getEditor() ? d.cm.getEditor().getScrollInfo() : {top:d.cm.scrollTop,left:d.cm.scrollLeft}, bookmarks:bookmarkLines(d)}))};
   }
   function flushSession() {
-    clearTimeout(persistTimer); if (restored) native('persist', captureWorkspace());
+    clearTimeout(persistTimer); if (restored && recoveryChanged) { recoveryChanged = false; native('persist', captureWorkspace()); }
   }
-  function schedulePersist() { clearTimeout(persistTimer); persistTimer = setTimeout(flushSession, 550); }
+  function schedulePersist() { recoveryChanged = true; clearTimeout(persistTimer); persistTimer = setTimeout(flushSession, 550); }
+  // Continuous typing must not indefinitely postpone the debounced recovery.
+  setInterval(() => { if (recoveryChanged) flushSession(); }, 1000);
   function bootstrap(state) {
     if (restored) return;
     settings = {...defaults, ...(state.settings || {})};
@@ -620,7 +623,7 @@
   async function about(){
     const desktop=window.AnotePNative?.platform==='desktop';
     const body=document.createElement('div'),image=document.createElement('img');image.src='icon.svg';image.className='about-logo';image.alt='AnoteP penguin and notepad';
-    body.append(image,textNode('div',desktop?'AnoteP Desktop '+(window.AnotePNative.version||'1.1.0'):'AnoteP 1.0','about-name'),textNode('p',desktop?'A local desktop text and source-code editor inspired by the classic Notepad++ workflow.':'A local Android text and source-code editor inspired by the classic Notepad++ workflow.'),
+    body.append(image,textNode('div','AnoteP '+window.ANOTEP_VERSION,'about-name'),textNode('p','The shared AnoteP offline text and source-code editor for Android, Windows and Linux.'),
       textNode('p',desktop?'Built for offline editing. Files stay on this computer. No account, ads, or network access.':'Built for offline editing. No account. No Internet permission. No ads.'),
       textNode('p','AnoteP is an independent app, not an official Notepad++ port. Notepad++ plugins, Scintilla, and full Notepad++ feature parity are not included. The editing engine is CodeMirror 5 (MIT license).'));
     await dialog('About AnoteP',body);
@@ -628,6 +631,7 @@
   async function featureList(){
     const body=document.createElement('div');for(const paragraph of [
       'Editing: multiple tabs, undo/redo, syntax highlighting, folding, bookmarks, bracket/tag completion, word completion, split views, comments, line transforms, case conversion, sorting, and local macros.',
+      'Automatic language detection: filenames, shebangs and code contents, including unsaved scratch tabs. Detection updates while typing; choose a language manually to override it, or Auto detect to enable it again.',
       'Search: literal and regular expression search, replace and replace all, capture-group replacements ($1…), search across open tabs, and search in a selected local folder.',
       (window.AnotePNative?.platform==='desktop'?'Files: local open/save dialogs and folder browser, UTF-8 / BOM / UTF-16 / Windows-1252 / ISO-8859-1 / ASCII, CRLF / LF / CR, recovery of unsaved tabs, and a warning before overwriting externally changed files.':'Files: Android file picker and folder browser, UTF-8 / BOM / UTF-16 / Windows-1252 / ISO-8859-1 / ASCII, CRLF / LF / CR, recovery of unsaved tabs, and a warning before overwriting externally changed files.'),
       (window.AnotePNative?.platform==='desktop'?'Limits: 8 MB per file, 30 tabs, and 32 MB recovery workspace. Notepad++ plugins, spell checking, code execution, FTP, and full Scintilla compatibility are not included.':'Limits: Android 8+, 8 MB per file, 30 tabs, and 32 MB recovery workspace. Notepad++ plugins, spell checking, code execution, FTP, and full Scintilla compatibility are not included.')

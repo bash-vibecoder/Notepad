@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 scripts/sync-version.py
+ANOTEP_VERSION="$(cat VERSION)"
 
 # Offline build: supply these jars or reuse the installed Android tools.
 ANOTEP_ANDROID_JAR="${ANOTEP_ANDROID_JAR:-/root/p1/.tools/android.jar}"
@@ -16,7 +18,7 @@ done
 mkdir -p build/generated build/classes build/dex build/tests dist .tools
 find build/generated build/classes build/dex build/tests -type f -delete
 ANOTEP_MANIFEST=app/src/main/AndroidManifest.xml
-ANOTEP_APK=dist/AnoteP-v1.0.apk
+ANOTEP_APK="dist/AnoteP-${ANOTEP_VERSION}-android.apk"
 if [[ "${ANOTEP_DEBUG:-0}" == 1 ]]; then
     python3 - <<'PY'
 from pathlib import Path
@@ -57,6 +59,7 @@ python3 - "$ANOTEP_APK" <<'PY'
 import hashlib, sys
 from pathlib import Path
 p = Path(sys.argv[1])
+assert p.stat().st_size < 1024 * 1024, 'APK exceeds the 1 MiB download budget'
 Path(str(p)+'.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')
 PY
 ls -lh "$ANOTEP_APK"

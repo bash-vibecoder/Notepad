@@ -1,5 +1,9 @@
 # Small native Windows edition
 
+**Historical build only.** This folder reproduces the 1.2.x Notepad++-based
+edition. Current unified releases use `native/windows-webview`, the same AnoteP
+editor as Android and Linux, and the root `VERSION` file.
+
 AnoteP 1.2.1 for Windows builds the pinned Notepad++ 8.9.9.1 C++ source with
 Scintilla, Lexilla and Boost.Regex. It does not ship Electron, Chromium, Node.js,
 WebView2, a browser installer, an updater or third-party plugins. The build fails

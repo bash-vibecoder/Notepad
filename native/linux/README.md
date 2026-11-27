@@ -1,4 +1,4 @@
-# Small Linux edition — AnoteP 1.3.0
+# Shared Linux edition — AnoteP 1.4.0
 
 The `.deb` and portable `.tar.xz` contain the editor, all 121 bundled language
 modes, artwork and a small Python/GTK host. They no longer bundle Electron,
@@ -17,7 +17,7 @@ edition. The portable archive is not a self-contained AppImage.
 Debian 12+ or Ubuntu 22.04+ with current updates and WebKitGTK 2.40+:
 
 ```sh
-sudo apt install ./AnoteP-1.3.0-linux.deb
+sudo apt install ./AnoteP-1.4.0-linux.deb
 anotep
 ```
 
@@ -30,12 +30,12 @@ Install the system runtime if it is not already present:
 
 ```sh
 sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
-tar -xf AnoteP-1.3.0-linux-portable.tar.xz
-./AnoteP-1.3.0/anotep
+tar -xf AnoteP-1.4.0-linux-portable.tar.xz
+./AnoteP-1.4.0/anotep
 ```
 
 Extract to a writable directory. The executable launcher runs directly with no
-app installation and keeps preferences/recovery in `AnoteP-1.3.0/profile/`, next
+app installation and keeps preferences/recovery in `AnoteP-1.4.0/profile/`, next
 to the launcher. The package does not download or install anything itself.
 To use another profile: `./anotep --profile /path/to/profile`.
 Other desktop Linux distributions need equivalent Python 3.10+, PyGObject,

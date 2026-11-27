@@ -6,7 +6,7 @@ let args = process.argv.slice(2);
 if (process.platform === 'win32' || args.includes('--win')) {
   if (process.platform !== 'win32') throw new Error('Build the small native Windows edition on Windows with native/windows/build.ps1 or the Windows CI workflow.');
   const arch = args.includes('--ia32') ? 'ia32' : 'x64';
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'native/windows/build.ps1'), '-Arch', arch], {cwd: root, stdio: 'inherit'});
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'native/windows-webview/build.ps1'), '-Arch', arch], {cwd: root, stdio: 'inherit'});
   process.exit(result.status ?? 1);
 }
 if (args.includes('AppImage')) throw new Error('Small Linux packages use system WebKitGTK: build the .deb and portable .tar.xz with npm run dist -- --linux. The large Electron AppImage is retired.');

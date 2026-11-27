@@ -1,12 +1,10 @@
-name: Small Linux packages
+name: Shared AnoteP Linux packages
 
 on:
-  push:
-    tags: ["linux-v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   linux:
@@ -26,10 +24,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 xvfb xauth dbus-x11
+      - run: python3 scripts/sync-version.py --check
       - name: File fidelity and recovery tests
         run: python3 -m unittest discover -s native/linux -p 'test_*.py' -v
       - name: Build .deb and portable archive (each below 1 MiB)
         run: python3 native/linux/build.py
+      - run: python3 scripts/audit-packages.py release/AnoteP-*-linux.deb release/AnoteP-*-linux-portable.tar.xz
       - name: Verify and exercise the portable package
         run: |
           cd release
@@ -61,38 +61,3 @@ jobs:
           name: linux-screenshot-${{ matrix.arch }}
           path: build/screenshots/linux-webkit.png
           if-no-files-found: error
-
-  publish:
-    if: startsWith(github.ref, 'refs/tags/linux-v')
-    needs: [linux]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-small-x64
-          path: release
-      - run: cd release && sha256sum --check SHA256SUMS-linux.txt
-      - uses: softprops/action-gh-release@v2
-        with:
-          name: AnoteP Linux ${{ github.ref_name }} — small packages
-          make_latest: false
-          body: |
-            Small Linux .deb and portable .tar.xz, using the shared system WebKitGTK runtime instead of bundling Electron. Each download is under 1 MiB; both files support x86-64 and ARM64.
-
-            Requirements: Python 3.10+, PyGObject, GTK 3, WebKit2GTK 4.1 (WebKit 2.40+). Debian 12+ or Ubuntu 22.04+ with current updates.
-
-            Install the .deb with `sudo apt install ./AnoteP-1.3.0-linux.deb` so APT resolves dependencies.
-
-            For portable use, install the runtime once with `sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1`, extract the archive to a writable directory and run `./AnoteP-1.3.0/anotep`. Recovery stays in its adjacent `profile/` directory. This is a portable archive, not a self-contained AppImage.
-
-            Download sizes exclude the system runtime. Missing dependencies can require tens of MB to download and considerably more installed space. The app does not download runtimes itself and works offline after dependencies are installed.
-
-            Existing editor features remain: tabs, 121 language modes, automatic language detection, find/replace, folder search, split view, macros, encoding/line-ending controls, clipboard and local recovery. Installed builds reuse the preceding Electron workspace format and location.
-
-            CI tests both packaged editions on x86-64 and ARM64: real WebKit UI, native bridge, local open/save, Unicode/BOM/CRLF, conflict handling, folder search, clipboard, syntax, split view, network/navigation blocking and close/relaunch recovery. SHA-256 checksums included. Complete source is in this tag and inside the Python/JavaScript packages.
-
-            Windows native 1.2.0 and Android 1.0 remain in their existing releases.
-          files: |
-            release/AnoteP-*-linux.deb
-            release/AnoteP-*-linux-portable.tar.xz
-            release/SHA256SUMS-linux.txt

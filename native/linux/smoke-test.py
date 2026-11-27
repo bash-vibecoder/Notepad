@@ -88,7 +88,7 @@ def main():
         editor = launch(assets, profile)
         try:
             check(js(editor, '[AnotePNative.platform, AnotePNative.version, typeof require]'),
-                  ['desktop', '1.3.0', 'undefined'], 'System WebKit bridge and version')
+                  ['desktop', host.VERSION, 'undefined'], 'System WebKit bridge and unified version')
             check(value(editor), '', 'Empty initial document')
             # Control native chooser outcomes while using the actual bridge.
             choices = {'open': [str(source)], 'save': [str(saved)], 'folder': [str(root)]}

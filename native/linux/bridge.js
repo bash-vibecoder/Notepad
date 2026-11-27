@@ -1,10 +1,10 @@
-/* Injected only into AnoteP's local, top-level editor by the GTK host. */
+/* Shared desktop bridge, injected only into the bundled top-level editor. */
 (() => {
   'use strict';
   const listeners = [];
-  const post = raw => window.webkit.messageHandlers.anotep.postMessage(raw);
+  const post = raw => window.chrome?.webview ? window.chrome.webview.postMessage(raw) : window.webkit.messageHandlers.anotep.postMessage(raw);
   Object.defineProperty(window, 'AnotePNative', {value: Object.freeze({
-    platform: 'desktop', version: '1.3.0',
+    platform: 'desktop', get version() { return window.ANOTEP_VERSION; },
     dispatch: post,
     // GTK's delete-event separately waits for captureWorkspace() and a durable
     // disk write before destroying the window. This handles pagehide as well.
@@ -42,5 +42,6 @@
       window.__anotepReceive({type: 'error', requestId, payload: {message: error.message}});
     }
   }});
+  if (window.chrome?.webview) window.chrome.webview.addEventListener('message', event => window.__anotepReceive(event.data));
   window.close = () => post(JSON.stringify({type: 'close'}));
 })();

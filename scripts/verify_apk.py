@@ -17,12 +17,15 @@ if 'debug' not in apk.name.lower():
 badging = subprocess.check_output(['aapt', 'dump', 'badging', str(apk)], text=True)
 assert "package: name='app.anotep.editor'" in badging
 assert "application-label:'AnoteP'" in badging
+version = (Path(__file__).resolve().parents[1] / 'VERSION').read_text().strip()
+assert "versionName='" + version + "'" in badging, 'APK internal version must match VERSION'
 assert "sdkVersion:'26'" in badging
 assert "targetSdkVersion:'34'" in badging
 with ZipFile(apk) as archive:
     names = set(archive.namelist())
     for name in ['classes.dex', 'assets/index.html', 'assets/app.css', 'assets/app.js',
                  'assets/editor-core.js', 'assets/icon.svg', 'assets/licenses.txt',
+                 'assets/version.js',
                  'assets/vendor/codemirror.js', 'assets/vendor/codemirror.css',
                  'assets/vendor/LICENSE-CodeMirror.txt']:
         assert name in names, 'Missing packaged file: '+name
