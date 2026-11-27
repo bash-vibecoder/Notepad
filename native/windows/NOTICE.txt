@@ -1,4 +1,4 @@
-AnoteP 1.2.0 - native Windows edition
+AnoteP 1.2.1 - native Windows edition
 
 This is a modified build of Notepad++ 8.9.9.1, not an official Notepad++ release.
 Notepad++ is Copyright (C) Don HO and its contributors, distributed under GNU
@@ -18,7 +18,7 @@ The native interface, sessions and preferences follow Notepad++, rather than
 the Android/previous Electron interface. Recovered copies are UTF-8; consult
 the preserved workspace.json for original file locations/encoding preferences.
 
-Corresponding source: the AnoteP-1.2.0-windows-source.zip asset in the same release.
+Corresponding source: the AnoteP-1.2.1-windows-source.zip asset in the same release.
 It contains the patched Notepad++ source, dependencies, build scripts and icon.
 Changes and release packaging: https://github.com/bash-vibecoder/Notepad
 Upstream: https://github.com/notepad-plus-plus/notepad-plus-plus

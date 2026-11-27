@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<NotepadPlus>
+    <GUIConfigs>
+        <GUIConfig name="RememberLastSession">yes</GUIConfig>
+        <GUIConfig name="Backup" action="0" useCustumDir="no" dir="" isSnapshotMode="yes" snapshotBackupTiming="1000" />
+    </GUIConfigs>
+</NotepadPlus>

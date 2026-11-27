@@ -1,3 +1,18 @@
+# AnoteP Windows 1.2.1
+
+Fixes scratch tabs disappearing after closing: normal launches enable session
+and snapshot recovery, including existing disabled profiles. Native recovery
+copies update every second and on normal close; a failed final recovery write
+keeps the editor open. First-run configuration is bundled and nested profile
+directories are created recursively. Original documents are not overwritten.
+
+Installers now require elevation and default to Program Files (x64) or Program
+Files (x86) (x86 on 64-bit Windows), with system-wide shortcuts and registration.
+Each user's AppData recovery and preferences survive uninstall. Portable ZIPs
+retain local profiles. CI tests actual default installation paths, scratch
+close/restart, periodic crash recovery, disabled-profile upgrade and failed
+recovery writes in both installed and portable editions on x86/x64.
+
 # AnoteP Linux 1.3.0
 
 Replaces bundled Electron on Linux with a small Python/GTK host using the system

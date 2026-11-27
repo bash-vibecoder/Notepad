@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser()
 parser.add_argument('executable', type=Path)
@@ -20,6 +21,8 @@ kernel = c.WinDLL('kernel32', use_last_error=True)
 callback_type = c.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
 user.SendMessageW.argtypes = [w.HWND, w.UINT, c.c_size_t, c.c_ssize_t]
 user.SendMessageW.restype = c.c_ssize_t
+user.PostMessageW.argtypes = [w.HWND, w.UINT, c.c_size_t, c.c_ssize_t]
+user.PostMessageW.restype = w.BOOL
 user.GetClassNameW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
 user.GetWindowTextW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
 user.IsWindowVisible.argtypes = [w.HWND]
@@ -106,8 +109,10 @@ class Remote:
         kernel.CloseHandle(self.process)
 
 def launch(profile, files=(), restore=False, env=None):
-    profile.mkdir(parents=True, exist_ok=True)
-    command = [str(args.executable.resolve()), '-multiInst', '-noPlugin', '-settingsDir=' + str(profile)]
+    command = [str(args.executable.resolve()), '-multiInst', '-noPlugin']
+    if profile is not None:
+        profile.mkdir(parents=True, exist_ok=True)
+        command.append('-settingsDir=' + str(profile))
     if not restore:
         command.append('-nosession')
     process = subprocess.Popen(command + list(map(str, files)), env=env)
@@ -166,6 +171,116 @@ with tempfile.TemporaryDirectory(prefix='AnoteP native tests ') as directory:
         send(hwnd, 0x10)
         process.wait(timeout=20)
         check(process.returncode == 0, 'Native window closes cleanly')
+        remote.close()
+        remote = None
+        process = None
+
+        # Test the user's exact launch path: no -settingsDir, no -nosession,
+        # no Save or Save As. This also checks Program Files never holds state.
+        portable = (args.executable.parent / 'doLocalConf.xml').exists()
+        native_profile = args.executable.parent if portable else Path(os.environ['APPDATA']) / 'AnoteP/Native'
+        scratch = 'scratch survives 🐧\r\nnever saved as a file\r\n'
+        process, hwnd, editor, controls = launch(None, restore=True)
+        remote = Remote(process.pid)
+        send(hwnd, 0x111, 41001)  # File > New
+        remote.set_text(editor, scratch)
+        check(bool(send(editor, 2159)), 'New scratch tab is dirty before exit')  # SCI_GETMODIFY
+        send(hwnd, 0x10)  # Close immediately, before the 1-second backup timer.
+        process.wait(timeout=20)
+        check(process.returncode == 0, 'Unsaved scratch closes without a Save As prompt')
+        remote.close()
+        remote = None
+        process = None
+        session_path = native_profile / 'session.xml'
+        check(session_path.is_file(), 'Default profile writes a native session manifest')
+        tree = ET.parse(session_path)
+        backups = [Path(node.get('backupFilePath')) for node in tree.findall('.//File') if node.get('backupFilePath')]
+        check(any(path.is_file() and path.read_text(encoding='utf-8-sig') == scratch.replace('\r\n', '\n') for path in backups),
+              'Immediate close writes the scratch text to its recovery file')
+        if not portable:
+            check(not (args.executable.parent / 'backup').exists() and not (args.executable.parent / 'config.xml').exists(),
+                  'Installed app stores recovery in per-user AppData, outside Program Files')
+
+        process, hwnd, editor, controls = launch(None, restore=True)
+        remote = Remote(process.pid)
+        wait_for(lambda: remote.text(editor) == scratch, 'unsaved scratch restored after normal restart')
+        check(bool(send(editor, 2159)), 'Restored scratch stays dirty and unsaved')
+        periodic = 'periodic recovery after forced termination 🐧\r\n'
+        remote.set_text(editor, periodic)
+        wait_for(lambda: any(path.is_file() and path.read_text(encoding='utf-8-sig') == periodic.replace('\r\n', '\n') for path in backups),
+                 'periodic backup without any Save command', timeout=15)
+        check(True, 'Scratch auto-backup runs while the app is open')
+        remote.close()
+        remote = None
+        process.kill()
+        process.wait(timeout=15)
+        process = None
+        process, hwnd, editor, controls = launch(None, restore=True)
+        remote = Remote(process.pid)
+        wait_for(lambda: remote.text(editor) == periodic, 'scratch restored after forced termination')
+        check(True, 'Periodic recovery survives forced process termination')
+        final_edit = periodic + 'last edit immediately before close'
+        remote.set_text(editor, final_edit)
+        send(hwnd, 0x10)
+        process.wait(timeout=20)
+        remote.close()
+        remote = None
+        process = None
+        process, hwnd, editor, controls = launch(None, restore=True)
+        remote = Remote(process.pid)
+        wait_for(lambda: remote.text(editor) == final_edit, 'last edit restored without waiting for timer')
+        check(True, 'Close preserves the last edit before the next periodic backup')
+        send(hwnd, 0x10)
+        process.wait(timeout=20)
+        remote.close()
+        remote = None
+        process = None
+
+        # Upgrade existing preferences that had disabled scratch recovery.
+        disabled_profile = root / 'disabled-recovery'
+        disabled_profile.mkdir()
+        (disabled_profile / 'config.xml').write_text(
+            '<NotepadPlus><GUIConfigs><GUIConfig name="RememberLastSession">no</GUIConfig>'
+            '<GUIConfig name="Backup" isSnapshotMode="no" snapshotBackupTiming="7000"/>'
+            '</GUIConfigs></NotepadPlus>', encoding='utf-8')
+        process, hwnd, editor, controls = launch(disabled_profile, restore=True)
+        remote = Remote(process.pid)
+        remote.set_text(editor, 'existing profile scratch 🐧')
+        send(hwnd, 0x10)
+        process.wait(timeout=20)
+        remote.close()
+        remote = None
+        process = None
+        process, hwnd, editor, controls = launch(disabled_profile, restore=True)
+        remote = Remote(process.pid)
+        wait_for(lambda: remote.text(editor) == 'existing profile scratch 🐧', 'recovery upgraded from disabled preferences')
+        check(True, 'Existing profiles gain scratch recovery even if it was disabled')
+        send(hwnd, 0x10)
+        process.wait(timeout=20)
+        remote.close()
+        remote = None
+        process = None
+
+        # A failed recovery write must keep the text open, never silently quit.
+        blocked_profile = root / 'blocked-recovery'
+        blocked_profile.mkdir()
+        blocked = blocked_profile / 'backup'
+        blocked.write_text('Simulated non-writable recovery directory')
+        process, hwnd, editor, controls = launch(blocked_profile, restore=True)
+        remote = Remote(process.pid)
+        remote.set_text(editor, 'do not discard this scratch 🐧')
+        # Send asynchronously because the expected error is a modal dialog.
+        user.PostMessageW(hwnd, 0x10, 0, 0)
+        error_dialog = wait_for(lambda: next((h for h in windows(process.pid)
+            if classname(h) == '#32770' and user.IsWindowVisible(h)), None), 'failed recovery warning')
+        check(process.poll() is None and remote.text(editor) == 'do not discard this scratch 🐧',
+              'A failed recovery write refuses exit and preserves text in the editor')
+        send(error_dialog, 0x111, 1)  # IDOK
+        blocked.unlink()
+        blocked.mkdir()
+        send(hwnd, 0x10)
+        process.wait(timeout=20)
+        check(process.returncode == 0, 'Close succeeds after the recovery directory is repaired')
         remote.close()
         remote = None
         process = None

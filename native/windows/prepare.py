@@ -50,15 +50,38 @@ def prepare(destination):
                         tofile='b/PowerEditor/src/' + relative))
 
     edit('resource.h', [
-        ('L"Notepad++ v8.9.9.1"', 'L"AnoteP v1.2.0 (based on Notepad++ 8.9.9.1)"', 1),
-        ('#define VERSION_PRODUCT_VALUE L"8.9.9.1\\0"', '#define VERSION_PRODUCT_VALUE L"1.2.0\\0"', 1),
-        ('#define VERSION_DIGITALVALUE 8, 9, 9, 1', '#define VERSION_DIGITALVALUE 1, 2, 0, 0', 1),
+        ('L"Notepad++ v8.9.9.1"', 'L"AnoteP v1.2.1 (based on Notepad++ 8.9.9.1)"', 1),
+        ('#define VERSION_PRODUCT_VALUE L"8.9.9.1\\0"', '#define VERSION_PRODUCT_VALUE L"1.2.1\\0"', 1),
+        ('#define VERSION_DIGITALVALUE 8, 9, 9, 1', '#define VERSION_DIGITALVALUE 1, 2, 1, 0', 1),
     ])
     edit('Notepad_plus_Window.h', [('L"Notepad++"', 'L"AnoteP"', 1)])
     edit('Notepad_plus_Window.cpp', [('\t\tL"Notepad++",', '\t\tL"AnoteP",', 1)])
     edit('Parameters.cpp', [
         ('pathAppend(settingsFolderPath, L"Notepad++");', 'pathAppend(settingsFolderPath, L"AnoteP\\\\Native");', 1),
         ('pathAppend(_userPath, L"Notepad++");', 'pathAppend(_userPath, L"AnoteP\\\\Native");', 1),
+        ('\t\t\t::CreateDirectory(_userPath.c_str(), NULL);',
+         '\t\t\t::SHCreateDirectoryExW(nullptr, _userPath.c_str(), nullptr);', 1),
+        ('\t\tgetUserParametersFromXmlTree();\r\n\t}\r\n',
+         '\t\tgetUserParametersFromXmlTree();\r\n\t}\r\n'
+         '\r\n\t// AnoteP: normal launches always recover unsaved scratch tabs, including\r\n'
+         '\t// profiles previously saved with session/snapshot recovery disabled.\r\n'
+         '\t// Apply before reading session.xml; explicit -nosession is still honored.\r\n'
+         '\t_nppGUI._rememberLastSession = true;\r\n'
+         '\t_nppGUI._isSnapshotMode = true;\r\n'
+         '\t_nppGUI._snapshotBackupTiming = 1000;\r\n', 1),
+    ])
+    edit('NppBigSwitch.cpp', [
+        ('\t\t\t\t\t::LockWindowUpdate(hwnd);\r\n\t\t\t\t\tMainFileManager.backupCurrentBuffer();',
+         '\t\t\t\t\t::LockWindowUpdate(hwnd);\r\n'
+         '\t\t\t\t\tif (!MainFileManager.backupCurrentBuffer() && !_pEditView->getCurrentBuffer()->isLargeFile())\r\n'
+         '\t\t\t\t\t{\r\n'
+         '\t\t\t\t\t\t::LockWindowUpdate(nullptr);\r\n'
+         '\t\t\t\t\t\tNppDarkMode::darkMessageBoxW(hwnd,\r\n'
+         '\t\t\t\t\t\t\tL"AnoteP could not write the recovery copy. Your text is still open.\\r\\n"\r\n'
+         '\t\t\t\t\t\t\tL"Save the affected document or make the profile folder writable, then close again.",\r\n'
+         '\t\t\t\t\t\t\tL"AnoteP recovery could not be saved", MB_OK | MB_ICONERROR);\r\n'
+         '\t\t\t\t\t\treturn 0;\r\n'
+         '\t\t\t\t\t}', 1),
     ])
     edit('Parameters.h', [('_doAutoUpdate = autoupdate_on_startup;', '_doAutoUpdate = autoupdate_disabled;', 1)])
     edit('Notepad_plus.cpp', [('bool enablePluginAdmin = _pluginsAdminDlg.initFromJson();',

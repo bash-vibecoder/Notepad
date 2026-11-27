@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish verified installers and corresponding source as v1.2.0
+        description: Publish verified installers and corresponding source as v1.2.1
         type: boolean
         default: false
 
@@ -39,22 +39,27 @@ jobs:
       - name: Install, verify, test and uninstall
         shell: pwsh
         run: |
-          $installer = (Resolve-Path 'release/AnoteP-1.2.0-win-${{ matrix.arch }}.exe').Path
-          $installDir = Join-Path $env:RUNNER_TEMP 'AnoteP Native Installed'
-          $p = Start-Process $installer -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          $installer = (Resolve-Path 'release/AnoteP-1.2.1-win-${{ matrix.arch }}.exe').Path
+          $programFiles = if ('${{ matrix.arch }}' -eq 'x64') { $env:ProgramW6432 } else { ${env:ProgramFiles(x86)} }
+          $installDir = Join-Path $programFiles 'AnoteP Native'
+          $p = Start-Process $installer -ArgumentList '/S' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
+          if (!(Test-Path "$installDir/AnoteP.exe")) { throw "Default installer path is not Program Files: $installDir" }
           node scripts/verify-binary-arch.cjs "$installDir/AnoteP.exe" pe ${{ matrix.arch }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python native/windows/smoke-test.py "$installDir/AnoteP.exe" --label installed-${{ matrix.arch }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $session = Join-Path $env:APPDATA 'AnoteP/Native/session.xml'
+          if (!(Test-Path $session)) { throw 'Installed recovery session was not persisted in AppData' }
           $p = Start-Process "$installDir/Uninstall.exe" -ArgumentList '/S' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
           if (Test-Path "$installDir/AnoteP.exe") { throw 'Uninstall left the executable behind' }
+          if (!(Test-Path $session)) { throw 'Uninstall removed the user recovery session' }
       - name: Verify portable package
         shell: pwsh
         run: |
           $portable = Join-Path $env:RUNNER_TEMP 'AnoteP Portable'
-          Expand-Archive release/AnoteP-1.2.0-win-${{ matrix.arch }}-portable.zip $portable
+          Expand-Archive release/AnoteP-1.2.1-win-${{ matrix.arch }}-portable.zip $portable
           node scripts/verify-binary-arch.cjs "$portable/AnoteP.exe" pe ${{ matrix.arch }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python native/windows/smoke-test.py "$portable/AnoteP.exe" --label portable-${{ matrix.arch }}
@@ -89,21 +94,25 @@ jobs:
           find gathered -type f \( -name '*.exe' -o -name '*.zip' \) -exec cp {} release/ \;
           test "$(find release -name '*.exe' | wc -l)" = 2
           test "$(find release -name '*-portable.zip' | wc -l)" = 2
-          test -s release/AnoteP-1.2.0-windows-source.zip
+          test -s release/AnoteP-1.2.1-windows-source.zip
           cd release
           sha256sum * > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
           cat > notes.txt <<'NOTES'
           Windows size reduction: native C++/Scintilla replaces Electron.
 
+          This patch fixes unsaved scratch-tab recovery: normal launches enable session/snapshot recovery even for older profiles where it was disabled, back up every second, flush before closing, and keep the editor open if the final recovery write fails. A bundled config model persists first-run settings. Recovery remains private in %APPDATA%\AnoteP\Native (or next to the portable executable).
+
+          Installers now request elevation and default to C:\Program Files\AnoteP Native for x64, or C:\Program Files (x86)\AnoteP Native for x86 on 64-bit Windows. Shortcuts and uninstall registration are system-wide; uninstall preserves user recovery. Previous per-user application files are left intact.
+
           Separate x86 (ia32, 32-bit) and x64 (64-bit) installers and portable ZIPs. No Chromium, Node.js, WebView2 dependency, runtime downloader, updater or bundled third-party plugins. The interactive installer supports a custom folder and shortcuts; uninstall preserves user profiles.
 
-          This is a modified Notepad++ 8.9.9.1 build with the AnoteP name and penguin icon. It uses the native Notepad++ interface and feature set rather than the Android/Electron interface. Upstream copyright and GPL-3.0 notices are retained. The exact patched source and vendored dependencies are included in AnoteP-1.2.0-windows-source.zip.
+          This is a modified Notepad++ 8.9.9.1 build with the AnoteP name and penguin icon. It uses the native Notepad++ interface and feature set rather than the Android/Electron interface. Upstream copyright and GPL-3.0 notices are retained. The exact patched source and vendored dependencies are included in AnoteP-1.2.1-windows-source.zip.
 
           Existing Electron workspace.json is preserved. On first native launch, its tabs are exported as UTF-8 recovery copies under %APPDATA%\AnoteP\Native\Recovered; use Save As for original paths. Native sessions/preferences are separate.
 
-          Both installers and portable packages are tested on Windows: architecture, installation, Unicode/BOM/CRLF open/save, undo/redo, native syntax highlighting, split view, macros, Find, close and previous-workspace recovery. SHA256SUMS.txt covers the installers, portable ZIPs and source archive.
+          Both installers and portable packages are tested on Windows: architecture, default Program Files installation, Unicode/BOM/CRLF open/save, undo/redo, native syntax highlighting, split view, macros, Find, immediate scratch close/restart, periodic recovery after forced termination, disabled-profile upgrade, blocked recovery writes, uninstall preserving the session, and previous-workspace recovery. SHA256SUMS.txt covers the installers, portable ZIPs and source archive.
 
           Windows installers are unsigned. Android and Linux packages remain available in the preceding releases; this release changes Windows only.
           NOTES
-          gh release create v1.2.0 *.exe *.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AnoteP 1.2.0 — small native Windows edition' --notes-file notes.txt --latest
+          gh release create v1.2.1 *.exe *.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AnoteP 1.2.1 — scratch recovery and Program Files installation' --notes-file notes.txt --latest=false

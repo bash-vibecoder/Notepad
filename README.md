@@ -3,12 +3,12 @@
 An offline text and source-code editor inspired by the classic Notepad++
 workflow, with light menus, green accents, document tabs, line numbers, and an
 original penguin-and-notepad icon on a black background. Android and desktop
-editions keep editing local. Windows 1.2.0 uses native C++/Scintilla based on
+editions keep editing local. Windows 1.2.1 uses native C++/Scintilla based on
 Notepad++ 8.9.9.1. Android and Linux use the independent bundled CodeMirror
 editor; those editions block remote navigation and network requests.
 
 [Download the current release — all platforms](https://github.com/bash-vibecoder/Notepad/releases/latest).
-It includes native Windows x86/x64 installers and portable ZIPs (1.2.0), small
+It includes native Windows x86/x64 installers and portable ZIPs (1.2.1), small
 Linux `.deb` and portable `.tar.xz` packages (1.3.0), and the current Android APK
 (1.0, including ARMv7), plus the Windows corresponding source and SHA-256
 checksums. These are the latest builds for each platform; their actual version
@@ -74,7 +74,7 @@ declares **no permissions**.
 
 ## Scope and limits
 
-AnoteP is not an official Notepad++ release. Windows 1.2.0 is an unofficial
+AnoteP is not an official Notepad++ release. Windows 1.2.1 is an unofficial
 modified build of its native C++/Scintilla source, with AnoteP branding and
 updates/plugin downloads disabled. The complete patched source is provided
 with the Windows release under GPL-3.0.
@@ -91,10 +91,16 @@ record file-picker interactions.
 
 ## Desktop builds
 
-Windows 1.2.0 replaces Electron with the native Notepad++/Scintilla codebase.
+Windows 1.2.1 uses the native Notepad++/Scintilla codebase.
 It ships no browser engine or downloaded runtime. Both 32-bit x86 and 64-bit x64
 interactive installers and portable ZIPs are built; CI rejects installers at or
 above 12 MiB. Installers are unsigned and may show a Windows publisher warning.
+
+Installers default to Program Files and require administrator permission.
+Settings and scratch recovery remain in each user's AppData. Unsaved scratch
+tabs recover on restart, with periodic backups every second and a final backup
+before normal exit. If that final write fails, the editor stays open so text
+can be saved. Portable profiles stay beside the executable.
 
 Use Visual Studio C++ tools, the Windows SDK, Python 3.12+ and NSIS:
 

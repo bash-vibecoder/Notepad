@@ -28,6 +28,7 @@ $stage = Join-Path $repo "build\native-$Arch"
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item "$Source\PowerEditor\$bin\notepad++.exe" "$stage\AnoteP.exe"
 Copy-Item "$Source\PowerEditor\src\langs.model.xml", "$Source\PowerEditor\src\stylers.model.xml" $stage
+Copy-Item "$PSScriptRoot\config.model.xml" $stage
 Copy-Item "$Source\PowerEditor\installer\APIs" "$stage\autoCompletion" -Recurse
 Copy-Item "$Source\PowerEditor\installer\functionList", "$Source\PowerEditor\installer\themes", "$Source\PowerEditor\bin\userDefineLangs" $stage -Recurse
 Copy-Item "$Source\LICENSE" "$stage\LICENSE.txt"
@@ -47,7 +48,7 @@ if (!$nsis) {
   $nsisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
   if (!(Test-Path $nsisPath)) { throw 'Install NSIS (makensis.exe) to build the installer' }
 } else { $nsisPath = $nsis.Source }
-$installer = Join-Path $repo "release\AnoteP-1.2.0-win-$Arch.exe"
+$installer = Join-Path $repo "release\AnoteP-1.2.1-win-$Arch.exe"
 Push-Location $PSScriptRoot
 & $nsisPath /V2 "/DARCH=$Arch" "/DSTAGE=$stage" "/DOUTPUT=$installer" installer.nsi
 Pop-Location
@@ -59,5 +60,5 @@ $portableStage = Join-Path $repo "build\portable-$Arch\AnoteP"
 New-Item -ItemType Directory -Force (Split-Path $portableStage) | Out-Null
 Copy-Item $stage $portableStage -Recurse
 Copy-Item "$Source\PowerEditor\installer\xml4Config\doLocalConf.xml" $portableStage
-Compress-Archive -Path "$portableStage\*" -DestinationPath "release\AnoteP-1.2.0-win-$Arch-portable.zip" -CompressionLevel Optimal
-Get-ChildItem release/AnoteP-1.2.0-win-$Arch* | Select-Object Name,Length
+Compress-Archive -Path "$portableStage\*" -DestinationPath "release\AnoteP-1.2.1-win-$Arch-portable.zip" -CompressionLevel Optimal
+Get-ChildItem release/AnoteP-1.2.1-win-$Arch* | Select-Object Name,Length
