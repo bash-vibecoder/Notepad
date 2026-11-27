@@ -9,6 +9,9 @@ user.GetWindowTextW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
 user.GetClassNameW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
 user.GetDlgCtrlID.argtypes = [w.HWND]
 user.IsWindowVisible.argtypes = [w.HWND]
+user.IsWindowEnabled.argtypes = [w.HWND]
+user.GetParent.argtypes = [w.HWND]
+user.GetParent.restype = w.HWND
 user.SendMessageW.argtypes = [w.HWND, w.UINT, c.c_size_t, c.c_ssize_t]
 user.SendMessageW.restype = c.c_ssize_t
 user.PostMessageW.argtypes = [w.HWND, w.UINT, c.c_size_t, c.c_ssize_t]
@@ -54,13 +57,29 @@ def main():
             user.PostMessageW(dialog, 0x111, 2 if action == 'cancel' else 1, 0)
             print('Native dialog dismissed:', title)
             return
+        # The shell also exposes search-box Edit controls with ID 1001.
+        # Address the filename ComboBox (1148), and let initialization settle.
+        time.sleep(.5)
         children = windows(dialog)
-        edits = [h for h in children if text(h, True) == 'Edit' and user.GetDlgCtrlID(h) in (1001, 1148)]
+        edits = [h for h in children if text(h, True) == 'Edit'
+                 and user.IsWindowVisible(h) and user.IsWindowEnabled(h)
+                 and (user.GetDlgCtrlID(h) == 1148
+                      or user.GetDlgCtrlID(user.GetParent(h)) == 1148)]
         if not edits:
             time.sleep(.1)
             continue
         value = c.create_unicode_buffer(sys.argv[3])
-        user.SendMessageW(edits[0], 0x000C, 0, c.addressof(value))
+        edit = edits[0]
+        user.SendMessageW(dialog, 0x0028, edit, 1)  # WM_NEXTDLGCTL
+        user.SendMessageW(edit, 0x000C, 0, c.addressof(value))
+        user.SendMessageW(user.GetParent(edit), 0x0111,
+                          user.GetDlgCtrlID(edit) | (0x0300 << 16), edit)
+        time.sleep(.15)
+        actual = c.create_unicode_buffer(32768)
+        user.SendMessageW(edit, 0x000D, len(actual), c.addressof(actual))
+        if actual.value != sys.argv[3]:
+            continue
+        print('Native filename field:', actual.value)
         user.PostMessageW(dialog, 0x111, 1, 0)
         print('Native dialog accepted:', title)
         return
