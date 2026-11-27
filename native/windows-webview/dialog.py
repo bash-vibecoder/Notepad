@@ -55,7 +55,21 @@ def main():
             time.sleep(.1)
             continue
         if action in ('cancel', 'ok'):
-            user.PostMessageW(dialog, 0x111, 2 if action == 'cancel' else 1, 0)
+            if action == 'ok':
+                button = next((h for h in windows(dialog)
+                               if text(h, True) == 'Button'
+                               and text(h).replace('&', '').strip() == 'OK'), None)
+                if not button:
+                    time.sleep(.1)
+                    continue
+                user.PostMessageW(button, 0x00F5, 0, 0)  # BM_CLICK
+            else:
+                user.PostMessageW(dialog, 0x111, 2, 0)
+            until = time.monotonic() + 5
+            while user.IsWindowVisible(dialog) and time.monotonic() < until:
+                time.sleep(.05)
+            if user.IsWindowVisible(dialog):
+                raise SystemExit('Native dialog did not close: ' + title)
             print('Native dialog dismissed:', title)
             return
         # Keyboard input exercises the visible shell filename field.
