@@ -28,10 +28,15 @@ inline void migrateAnotePWorkspace()
 	// Export recovery copies only. Never save over an original document, existing
 	// native session, or an earlier recovered copy. Keep workspace.json untouched.
 	try {
-		wchar_t appdata[MAX_PATH]{};
-		if (::GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH) == 0)
-			return;
 		namespace fs = std::filesystem;
+		wchar_t executable[32768]{};
+		const DWORD length = ::GetModuleFileNameW(nullptr, executable, 32768);
+		if (length == 0 || length >= 32768 || fs::exists(fs::path(executable).parent_path() / L"doLocalConf.xml"))
+			return; // Portable editions keep their own state; never migrate into AppData.
+		wchar_t appdata[MAX_PATH]{};
+		const DWORD appdataLength = ::GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH);
+		if (appdataLength == 0 || appdataLength >= MAX_PATH)
+			return;
 		const fs::path root = fs::path(appdata) / L"AnoteP";
 		const fs::path native = root / L"Native";
 		fs::create_directories(native);

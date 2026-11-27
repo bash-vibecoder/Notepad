@@ -20,6 +20,9 @@ kernel = c.WinDLL('kernel32', use_last_error=True)
 callback_type = c.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
 user.SendMessageW.argtypes = [w.HWND, w.UINT, c.c_size_t, c.c_ssize_t]
 user.SendMessageW.restype = c.c_ssize_t
+user.GetClassNameW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
+user.GetWindowTextW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
+user.IsWindowVisible.argtypes = [w.HWND]
 user.GetWindowThreadProcessId.argtypes = [w.HWND, c.POINTER(w.DWORD)]
 kernel.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
 kernel.OpenProcess.restype = w.HANDLE
@@ -103,6 +106,7 @@ class Remote:
         kernel.CloseHandle(self.process)
 
 def launch(profile, files=(), restore=False, env=None):
+    profile.mkdir(parents=True, exist_ok=True)
     command = [str(args.executable.resolve()), '-multiInst', '-noPlugin', '-settingsDir=' + str(profile)]
     if not restore:
         command.append('-nosession')
@@ -150,7 +154,7 @@ with tempfile.TemporaryDirectory(prefix='AnoteP native tests ') as directory:
         find = wait_for(lambda: next((h for h in windows(process.pid) if classname(h) == '#32770' and user.IsWindowVisible(h)), None), 'Find dialog')
         check(True, 'Native Find dialog opens')
         send(find, 0x10)
-        send(hwnd, 0x111, 48006)  # Disabled updater command
+        send(hwnd, 0x111, 47006)  # Disabled updater command
         check(process.poll() is None, 'Offline build ignores update-download command')
         send(hwnd, 0x111, 41006)
         wait_for(lambda: 'macromacro' in source.read_text(encoding='utf-8-sig'), 'save edited text')
@@ -166,26 +170,29 @@ with tempfile.TemporaryDirectory(prefix='AnoteP native tests ') as directory:
         remote = None
         process = None
 
-        # Test old Electron-workspace import without touching any original file.
-        appdata = root / 'appdata'
-        legacy = appdata / 'AnoteP/workspace.json'
-        legacy.parent.mkdir(parents=True)
-        workspace = {'version': 1, 'documents': [{'name': 'recovered.py', 'text': 'unsaved 🐧\n', 'dirty': True, 'uri': source.as_uri()}]}
-        legacy.write_text(json.dumps(workspace), encoding='utf-8')
-        before = hashlib.sha256(legacy.read_bytes()).digest()
-        native_profile = appdata / 'AnoteP/Native'
-        native_profile.mkdir()
-        environment = {**os.environ, 'APPDATA': str(appdata)}
-        process, hwnd, editor, controls = launch(native_profile, restore=True, env=environment)
-        remote = Remote(process.pid)
-        wait_for(lambda: 'unsaved 🐧' in remote.text(editor), 'recovered workspace tab')
-        check(True, 'Previous Electron unsaved tab is recovered into native editor')
-        check(hashlib.sha256(legacy.read_bytes()).digest() == before, 'Original workspace.json is preserved byte-for-byte')
-        check(source.read_text(encoding='utf-8-sig') == 'macromacro', 'Migration never overwrites the original document')
-        check((native_profile / 'Recovered/workspace.json').exists(), 'Recovery includes a copy of the complete previous workspace')
-        send(hwnd, 0x10)
-        process.wait(timeout=20)
-        process = None
+        if (args.executable.parent / 'doLocalConf.xml').exists():
+            check(True, 'Portable edition retains local-configuration marker')
+        else:
+            # Test old Electron-workspace import without touching any original file.
+            appdata = root / 'appdata'
+            legacy = appdata / 'AnoteP/workspace.json'
+            legacy.parent.mkdir(parents=True)
+            workspace = {'version': 1, 'documents': [{'name': 'recovered.py', 'text': 'unsaved 🐧\n', 'dirty': True, 'uri': source.as_uri()}]}
+            legacy.write_text(json.dumps(workspace), encoding='utf-8')
+            before = hashlib.sha256(legacy.read_bytes()).digest()
+            native_profile = appdata / 'AnoteP/Native'
+            native_profile.mkdir()
+            environment = {**os.environ, 'APPDATA': str(appdata)}
+            process, hwnd, editor, controls = launch(native_profile, restore=True, env=environment)
+            remote = Remote(process.pid)
+            wait_for(lambda: 'unsaved 🐧' in remote.text(editor), 'recovered workspace tab')
+            check(True, 'Previous Electron unsaved tab is recovered into native editor')
+            check(hashlib.sha256(legacy.read_bytes()).digest() == before, 'Original workspace.json is preserved byte-for-byte')
+            check(source.read_text(encoding='utf-8-sig') == 'macromacro', 'Migration never overwrites the original document')
+            check((native_profile / 'Recovered/workspace.json').exists(), 'Recovery includes a copy of the complete previous workspace')
+            send(hwnd, 0x10)
+            process.wait(timeout=20)
+            process = None
     finally:
         if remote:
             remote.close()

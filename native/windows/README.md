@@ -43,7 +43,9 @@ ZIP, checks the old-workspace recovery and tests uninstallation.
 ## Previous Electron installation
 
 Close the old application before installing. The native application has the same
-AnoteP executable name and icon, but its preferences/session format is different.
+AnoteP executable name and icon, but installs into `Programs\AnoteP Native` with
+an **AnoteP Native** shortcut to distinguish it from the previous Electron app.
+Its preferences/session format is different.
 Settings live in `%APPDATA%\AnoteP\Native`; the existing Electron
 `%APPDATA%\AnoteP\workspace.json` is not deleted or overwritten.
 
@@ -55,9 +57,14 @@ Use **Save As** to write a recovered copy to its original file. Original encodin
 line-ending, cursor, macro and theme preferences are not automatically translated.
 If recovery export fails, the original workspace is left intact.
 
+After confirming recovery, uninstall the old Electron edition to reclaim its
+large runtime files. The native edition has a separate install directory and
+uninstall entry; it does not silently delete the old application.
+
 The portable ZIP stores its own settings beside the executable using
 `doLocalConf.xml`; it does not require installation. The installed edition's
 uninstaller preserves AppData, recovered tabs and user documents.
+Portable mode does not import the installed Electron workspace into AppData.
 
 ## License
 
