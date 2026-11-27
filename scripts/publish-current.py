@@ -110,8 +110,9 @@ def publish():
     for name, details in expected.items():
         assert actual[name]['size'] == details['size'] and actual[name].get('digest') == details['digest'], name
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-    published = api('/releases/' + str(RELEASE_ID), 'PATCH', {'draft': False, 'make_latest': 'true', 'target_commitish': commit})
-    assert not published['draft'] and api('/releases/latest')['id'] == RELEASE_ID
+    published = api('/releases/' + str(RELEASE_ID), 'PATCH', {
+        'tag_name': TAG, 'draft': False, 'make_latest': 'true', 'target_commitish': commit})
+    assert not published['draft'] and published['tag_name'] == TAG and api('/releases/latest')['id'] == RELEASE_ID
     print('Published ' + TAG + ': every variant is exactly ' + VERSION + ', with identical editor assets.', flush=True)
 
 
