@@ -142,7 +142,7 @@
     if (!d) return false;
     if ([...saves.values()].some(s => s.doc.id === d.id)) { toast('This document is already being saved.'); return false; }
     let name = d.name;
-    if (saveAs || !d.uri) {
+    if ((saveAs || !d.uri) && window.AnotePNative?.platform !== 'desktop') {
       name = await promptText('Save As','File name',/^new \d+$/.test(d.name) ? 'document.txt' : d.name);
       if (!name) return false;
       if (/[\/\\\x00-\x1f]/.test(name)) { toast('Use a file name without slashes or control characters.'); return false; }
@@ -584,7 +584,7 @@
         case 'loadMacro':macroSteps=[...settings.macro];toast('Loaded '+macroSteps.length+' macro steps.');break;
         case 'clearMacro':macroSteps=[];settings.macro=[];schedulePersist();toast('Macro cleared.');break;
         case 'about':await about();break;
-        case 'privacy':await message('Offline and local','AnoteP has no Internet permission, accounts, analytics, or ads. Its editor and language modes are bundled inside the APK. Files are opened through Android’s file picker. Choose “Internal storage” or an SD card for local files. Unsaved tabs and preferences are recovered from private on-device storage; Android cloud backup is disabled. Saving to a provider is always an explicit action.');break;
+        case 'privacy':await message('Offline and local',window.AnotePNative?.platform==='desktop'?'AnoteP bundles its editor and language modes. Network requests and remote navigation are blocked. Documents and unsaved-work recovery stay on this computer. Saving to a file is always an explicit action.':'AnoteP has no Internet permission, accounts, analytics, or ads. Its editor and language modes are bundled inside the APK. Files are opened through Android’s file picker. Choose “Internal storage” or an SD card for local files. Unsaved tabs and preferences are recovered from private on-device storage; Android cloud backup is disabled. Saving to a provider is always an explicit action.');break;
         case 'features':await featureList();break;
         case 'shortcuts':await shortcuts();break;
         case 'licenses':native('licenses');break;
@@ -618,18 +618,19 @@
     if(result){settings.fontSize=Math.max(10,Math.min(28,Number(font.value)||14));for(const key in toggles)settings[key]=toggles[key].checked;applySettings();}
   }
   async function about(){
+    const desktop=window.AnotePNative?.platform==='desktop';
     const body=document.createElement('div'),image=document.createElement('img');image.src='icon.svg';image.className='about-logo';image.alt='AnoteP penguin and notepad';
-    body.append(image,textNode('div','AnoteP 1.0','about-name'),textNode('p','A local Android text and source-code editor inspired by the classic Notepad++ workflow.'),
-      textNode('p','Built for offline editing. No account. No Internet permission. No ads.'),
-      textNode('p','AnoteP is an independent app, not an official Notepad++ port. Desktop Windows plugins, Scintilla, and full Notepad++ feature parity are not included. The editing engine is CodeMirror 5 (MIT license).'));
+    body.append(image,textNode('div',desktop?'AnoteP Desktop 1.1.0':'AnoteP 1.0','about-name'),textNode('p',desktop?'A local desktop text and source-code editor inspired by the classic Notepad++ workflow.':'A local Android text and source-code editor inspired by the classic Notepad++ workflow.'),
+      textNode('p',desktop?'Built for offline editing. Files stay on this computer. No account, ads, or network access.':'Built for offline editing. No account. No Internet permission. No ads.'),
+      textNode('p','AnoteP is an independent app, not an official Notepad++ port. Notepad++ plugins, Scintilla, and full Notepad++ feature parity are not included. The editing engine is CodeMirror 5 (MIT license).'));
     await dialog('About AnoteP',body);
   }
   async function featureList(){
     const body=document.createElement('div');for(const paragraph of [
       'Editing: multiple tabs, undo/redo, syntax highlighting, folding, bookmarks, bracket/tag completion, word completion, split views, comments, line transforms, case conversion, sorting, and local macros.',
       'Search: literal and regular expression search, replace and replace all, capture-group replacements ($1…), search across open tabs, and search in a selected local folder.',
-      'Files: Android file picker and folder browser, UTF-8 / BOM / UTF-16 / Windows-1252 / ISO-8859-1 / ASCII, CRLF / LF / CR, recovery of unsaved tabs, and a warning before overwriting externally changed files.',
-      'Limits: Android 8+, 8 MB per file, 30 tabs, and 32 MB recovery workspace. Desktop Notepad++ plugins, Windows executables, spell checking, code execution, FTP, and full Scintilla compatibility are not included.'
+      (window.AnotePNative?.platform==='desktop'?'Files: local open/save dialogs and folder browser, UTF-8 / BOM / UTF-16 / Windows-1252 / ISO-8859-1 / ASCII, CRLF / LF / CR, recovery of unsaved tabs, and a warning before overwriting externally changed files.':'Files: Android file picker and folder browser, UTF-8 / BOM / UTF-16 / Windows-1252 / ISO-8859-1 / ASCII, CRLF / LF / CR, recovery of unsaved tabs, and a warning before overwriting externally changed files.'),
+      (window.AnotePNative?.platform==='desktop'?'Limits: 8 MB per file, 30 tabs, and 32 MB recovery workspace. Notepad++ plugins, spell checking, code execution, FTP, and full Scintilla compatibility are not included.':'Limits: Android 8+, 8 MB per file, 30 tabs, and 32 MB recovery workspace. Notepad++ plugins, spell checking, code execution, FTP, and full Scintilla compatibility are not included.')
     ])body.append(textNode('p',paragraph));await dialog('Supported features',body);
   }
   async function shortcuts(){const pre=textNode('pre','Ctrl+N        New document\nCtrl+O        Open file\nCtrl+S        Save\nCtrl+Shift+S  Save As\nCtrl+W        Close tab\nCtrl+Tab      Next tab\nCtrl+F        Find\nCtrl+H        Replace\nCtrl+G        Go to line\nF3 / Shift+F3 Next / previous match\nCtrl+Shift+F  Find in local files\nCtrl+D        Duplicate line\nCtrl+J        Join lines\nCtrl+/        Toggle line comment\nAlt+↑ / Alt+↓ Move line up / down\nCtrl+F2       Toggle bookmark\nF2 / Shift+F2 Next / previous bookmark\nCtrl+Space    Word completion\nCtrl++ / −    Zoom\nCtrl+0        Reset zoom\nCtrl+Shift+P  Play macro\nEsc           Close dialog or search');await dialog('Keyboard shortcuts',pre);}
@@ -731,5 +732,14 @@
 
   buildToolbar();buildEditors();bindEvents();
   window.App={nativeEvent,flushSession,handleBack,run,captureWorkspace};
+  if (window.AnotePNative?.platform === 'desktop') {
+    window.AnotePNative.onEvent(nativeEvent);
+    window.addEventListener('beforeunload', event => {
+      if (restored && !window.AnotePNative.flushWorkspace(JSON.stringify(captureWorkspace()))) {
+        event.preventDefault(); event.returnValue = false;
+        toast('Recovery could not be saved. Save your tabs before closing.', 10000);
+      }
+    });
+  }
   native('ready');
 })();

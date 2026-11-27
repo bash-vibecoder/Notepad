@@ -2,4 +2,7 @@
 /.tools/
 /dist/
 /node_modules/
+/release/
+/desktop/icons/*.ico
+/desktop/icons/*.png
 *.idsig

@@ -1,3 +1,19 @@
+# AnoteP Desktop 1.1.0
+
+Adds an offline Windows and Linux desktop app using the same local editor and
+bundled language modes as AnoteP for Android.
+
+- Windows interactive installers for 32-bit x86 and 64-bit x64, with optional
+  install-folder selection and Start Menu / desktop shortcuts.
+- Linux x64 and ARM64 portable AppImages and Debian `.deb` packages.
+- Native local open/save dialogs, folder browsing and search, clipboard access,
+  local workspace recovery, text encodings, line endings, and external-change
+  conflict warnings.
+- Remote navigation and network requests blocked; renderer Node.js access
+  disabled.
+
+Windows installers are unsigned. Android remains at version 1.0.
+
 # AnoteP 1.0
 
 First Android release. Independent Notepad++ inspired editor with a black

@@ -1,14 +1,18 @@
 # AnoteP
 
-A fully offline Android text and source-code editor inspired by the classic
-Notepad++ interface: light menus and toolbars, green accents, document tabs,
-line numbers, and an original penguin-and-notepad icon on a black background.
+An offline text and source-code editor inspired by the classic Notepad++
+workflow, with light menus, green accents, document tabs, line numbers, and an
+original penguin-and-notepad icon on a black background. Android and desktop
+builds bundle the editor and language modes locally and block remote navigation
+and network requests.
 
-[Download the latest APK](https://github.com/bash-vibecoder/Notepad/releases/latest)
+[Download Android APK](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.0)
+or [desktop installers](https://github.com/bash-vibecoder/Notepad/releases/latest).
 
-Android 8.0 or newer, with a current Android System WebView. The APK works on
-ARM64, ARMv7, and x86 Android devices; it contains no architecture-specific native
-libraries. No account, ads, analytics, or Internet permission.
+The Android APK supports Android 8.0 or newer and runs on ARM64, ARMv7, and x86;
+it contains no architecture-specific native libraries. Desktop releases provide
+Windows x86 and x64 installers, plus Linux x64 and ARM64 AppImage and `.deb`
+packages. There are no accounts, ads, or analytics.
 
 <p>
   <img src="docs/screenshots/light.png" width="280" alt="AnoteP light theme with two rows of menus and keyboard controls">
@@ -31,15 +35,16 @@ libraries. No account, ads, analytics, or Internet permission.
 - Bookmarks, go to line, cloned split views, different documents in split views,
   a coding key panel with Shift/Ctrl/Alt and keyboard-style arrows, keyboard
   shortcuts, and local macro recording/playback.
-- Two visible rows for menus and tool icons. Menus stay open while the Android
-  keyboard hides.
+- Two visible rows for menus and tool icons. On Android, menus stay open while
+  the on-screen keyboard hides.
 - Light and dark themes, font zoom, word wrap, configurable indentation.
 
 ## Local files
 
-Open and save through Android's document picker. Choose **Internal storage** or
-an SD card to keep documents local. “Open folder as workspace” browses a folder
-you select. AnoteP does not request broad storage access.
+On Android, open and save through the system document picker. Choose **Internal
+storage** or an SD card to keep documents local. On desktop, native file dialogs
+open and save local paths. “Open folder as workspace” browses a folder you
+select. The Android build does not request broad storage access.
 
 Supported output encodings: UTF-8, UTF-8 BOM, UTF-16 LE/BE BOM, Windows-1252,
 ISO-8859-1, and ASCII. Line endings: CRLF, LF, and CR. UTF-8 and BOM encodings
@@ -49,30 +54,52 @@ and are normalized to the detected predominant style when saved. Unsupported
 characters are rejected rather than silently replaced during encoding.
 
 The app warns before overwriting a file changed by another editor. Unsaved work
-is saved in a private on-device recovery snapshot; this does not automatically
-overwrite your documents. Android cloud backup is disabled. Local editor assets
-are bundled in the APK, remote navigation is blocked, and the manifest declares
-**no permissions**.
+is saved in a private recovery snapshot; this does not automatically overwrite
+your documents. Android cloud backup is disabled. Local editor assets are
+bundled in each package, and remote navigation is blocked. The Android manifest
+declares **no permissions**.
 
 ## Scope and limits
 
-AnoteP is an independent Android implementation, not an official Notepad++
-release or a build of its Windows source. Its editor uses CodeMirror 5.65.20
-(MIT), not Scintilla. Desktop Windows plugins, code execution, FTP, spell checking,
-and complete Notepad++ feature parity are not included. Notepad++'s source code
-and original logo are not bundled.
+AnoteP is an independent implementation, not an official Notepad++ release or a
+build of its Windows source. The editor uses CodeMirror 5.65.20 (MIT), not
+Scintilla. Notepad++ plugins, code execution, FTP, spell checking, and complete
+Notepad++ feature parity are not included. Notepad++ source code and the original
+logo are not bundled.
 
 The current limits are 8 MB per document, 30 tabs, and a 32 MB recovery snapshot.
 Folder search scans up to 500 files / 16 MB / 200 directories and returns up to
 200 matching lines, skipping binary files and files above 1 MB. Macro recording
 covers text edits, simple cursor movement, and editing commands; it does not
-record Android file-picker interactions.
+record file-picker interactions.
 
-## Build
+## Desktop builds
 
-The source, editor assets, and licenses are included. Building does not download
-dependencies. Install JDK 17 or newer, Python 3, Node.js, and the Android build
-tools `aapt`, `zipalign`, `apksigner`, and `keytool`. Supply an Android API jar,
+The Windows installer is interactive and lets users choose the install folder.
+It creates Start Menu and desktop shortcuts. Separate installers are built for
+32-bit x86 and 64-bit x64 Windows. Linux releases include portable x64 and ARM64
+AppImages and matching Debian packages. Windows installers are unsigned, so
+Windows may show its standard publisher warning when first opening them.
+
+With Node.js 22 or newer, install dependencies and build a Windows x64 installer
+with:
+
+```sh
+npm ci
+npm test
+npm run dist -- --win nsis --x64
+```
+
+Change `--x64` to `--ia32` for 32-bit Windows, or use
+`--linux AppImage deb --x64` / `--arm64` for Linux packages. Linux desktop builds
+need GTK 3, NSS, XSS, and XTest system libraries. CI builds release packages on
+native Windows and Linux runners; see `.github/workflows/desktop-release.yml`.
+
+## Android build
+
+The source, editor assets, and licenses are included. The Android build does not
+download dependencies. Install JDK 17 or newer, Python 3, Node.js, and the Android
+build tools `aapt`, `zipalign`, `apksigner`, and `keytool`. Supply an Android API jar,
 a resource platform jar for API 34+, and an R8/D8 jar:
 
 ```sh
@@ -93,10 +120,10 @@ debugging. Do not publish the debug APK.
 
 ## Verification
 
-`scripts/build.sh` runs 61 Java file-fidelity checks, 19 JavaScript editing checks, 24 language
-detection checks,
-signature and alignment checks, and an APK audit for bundled assets, application
-identity, and absence of permissions.
+`scripts/build.sh` runs 61 Java file-fidelity checks, 19 JavaScript editing
+checks, 24 language-detection checks, signature and alignment checks, and an APK
+audit for bundled assets, application identity, and absence of permissions.
+`npm test` checks desktop text encoding and line-ending fidelity.
 
 For browser integration tests, install Playwright separately, install Chromium,
 then run:
