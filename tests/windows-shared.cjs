@@ -43,14 +43,26 @@ async function launch() {
   child.stderr.on('data', b => diagnostic.push(b.toString()));
   await waitFor(async () => {
     if (child.exitCode !== null) throw new Error('AnoteP exited ' + child.exitCode + ': ' + diagnostic.join(''));
-    try { return (await fetch('http://127.0.0.1:' + port + '/json/version')).ok; } catch { return false; }
+    let candidate;
+    try {
+      const endpoint = 'http://127.0.0.1:' + port;
+      if (!(await fetch(endpoint + '/json/version', {signal: AbortSignal.timeout(2000)})).ok) return false;
+      // The previous browser may still answer HTTP while its debugger socket
+      // is closing. Wait for a live editor connection after every relaunch.
+      candidate = await chromium.connectOverCDP(endpoint, {timeout: 3000});
+      const candidatePage = candidate.contexts()[0]?.pages()[0];
+      if (!candidatePage) { await candidate.close(); return false; }
+      await candidatePage.waitForSelector('.document-tab', {timeout: 3000});
+      browser = candidate;
+      page = candidatePage;
+      return true;
+    } catch {
+      if (candidate) { try { await candidate.close(); } catch {} }
+      return false;
+    }
   }, 'WebView2 developer connection', 60000).catch(error => { throw new Error(error.message + '\n' + diagnostic.join('')); });
-  browser = await chromium.connectOverCDP('http://127.0.0.1:' + port);
-  await waitFor(() => browser.contexts()[0]?.pages().length, 'AnoteP page');
-  page = browser.contexts()[0].pages()[0];
   page.setDefaultTimeout(20000);
   page.on('pageerror', error => console.error('Editor error:', error.message));
-  await page.waitForSelector('.document-tab');
   if (diagnostic.length) console.log(diagnostic.join('').trim());
   await page.evaluate(() => {
     window.__nativeTestEvents = [];
