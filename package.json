@@ -12,7 +12,7 @@
     "test": "node --test tests/desktop-core.test.cjs",
     "test:desktop": "node scripts/desktop-integration.cjs",
     "icons": "node scripts/build-desktop-icons.cjs",
-    "dist": "npm run icons && electron-builder"
+    "dist": "node scripts/build-desktop.cjs"
   },
   "devDependencies": {
     "electron": "43.8.13",

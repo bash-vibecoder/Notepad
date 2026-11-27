@@ -1,3 +1,16 @@
+# AnoteP Windows 1.2.0
+
+Replaces the large Electron Windows edition with a native C++/Scintilla build
+based on Notepad++ 8.9.9.1. Separate x86/x64 installers and portable ZIPs; no
+Chromium, Node.js, WebView2 or runtime downloader. The build enforces a 12 MiB
+installer ceiling.
+
+Uses the native Notepad++ interface and editing features with the AnoteP name,
+penguin icon and separate native settings. Automatic updates and plugin downloads
+are disabled. Existing Electron workspace text is exported as recovery copies;
+originals and the old workspace.json are preserved. The Windows derivative is
+GPL-3.0 and includes full corresponding source. Android/Linux are unchanged.
+
 # AnoteP Desktop 1.1.0
 
 Adds an offline Windows and Linux desktop app using the same local editor and

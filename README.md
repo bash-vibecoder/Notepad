@@ -3,11 +3,14 @@
 An offline text and source-code editor inspired by the classic Notepad++
 workflow, with light menus, green accents, document tabs, line numbers, and an
 original penguin-and-notepad icon on a black background. Android and desktop
-builds bundle the editor and language modes locally and block remote navigation
-and network requests.
+editions keep editing local. Windows 1.2.0 uses native C++/Scintilla based on
+Notepad++ 8.9.9.1. Android and Linux use the independent bundled CodeMirror
+editor; those editions block remote navigation and network requests.
 
 [Download Android APK](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.0)
-or [desktop installers](https://github.com/bash-vibecoder/Notepad/releases/latest).
+or [small native Windows installers](https://github.com/bash-vibecoder/Notepad/releases/latest).
+[Linux packages](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.1.0)
+remain available in the preceding release.
 
 The Android APK supports Android 8.0 or newer and runs on ARM64, ARMv7, and x86;
 it contains no architecture-specific native libraries. Desktop releases provide
@@ -20,6 +23,11 @@ packages. There are no accounts, ads, or analytics.
 </p>
 
 ## Editing
+
+The following describes the Android/Linux editor. The native Windows edition
+uses the Notepad++ interface and its native editing features: tabs, syntax
+lexers, split views, macros, find/replace, folder panels, encodings and themes.
+See [native Windows details](native/windows/README.md).
 
 - Multiple documents with local recovery of unsaved tabs, cursor positions,
   bookmarks, preferences, and a saved macro.
@@ -61,13 +69,16 @@ declares **no permissions**.
 
 ## Scope and limits
 
-AnoteP is an independent implementation, not an official Notepad++ release or a
-build of its Windows source. The editor uses CodeMirror 5.65.20 (MIT), not
-Scintilla. Notepad++ plugins, code execution, FTP, spell checking, and complete
-Notepad++ feature parity are not included. Notepad++ source code and the original
-logo are not bundled.
+AnoteP is not an official Notepad++ release. Windows 1.2.0 is an unofficial
+modified build of its native C++/Scintilla source, with AnoteP branding and
+updates/plugin downloads disabled. The complete patched source is provided
+with the Windows release under GPL-3.0.
 
-The current limits are 8 MB per document, 30 tabs, and a 32 MB recovery snapshot.
+Android/Linux remain independent CodeMirror 5.65.20 (MIT) implementations;
+Notepad++ plugins, code execution, FTP, spell checking, and full native feature
+parity are not included in those editions.
+
+Android/Linux limits are 8 MB per document, 30 tabs, and a 32 MB recovery snapshot.
 Folder search scans up to 500 files / 16 MB / 200 directories and returns up to
 200 matching lines, skipping binary files and files above 1 MB. Macro recording
 covers text edits, simple cursor movement, and editing commands; it does not
@@ -75,25 +86,33 @@ record file-picker interactions.
 
 ## Desktop builds
 
-The Windows installer is interactive and lets users choose the install folder.
-It creates Start Menu and desktop shortcuts. Separate installers are built for
-32-bit x86 and 64-bit x64 Windows. Linux releases include portable x64 and ARM64
-AppImages and matching Debian packages. Windows installers are unsigned, so
-Windows may show its standard publisher warning when first opening them.
+Windows 1.2.0 replaces Electron with the native Notepad++/Scintilla codebase.
+It ships no browser engine or downloaded runtime. Both 32-bit x86 and 64-bit x64
+interactive installers and portable ZIPs are built; CI rejects installers at or
+above 12 MiB. Installers are unsigned and may show a Windows publisher warning.
 
-With Node.js 22 or newer, install dependencies and build a Windows x64 installer
-with:
+Use Visual Studio C++ tools, the Windows SDK, Python 3.12+ and NSIS:
 
-```sh
-npm ci
-npm test
-npm run dist -- --win nsis --x64
+```powershell
+./native/windows/build.ps1 -Arch x64 -SourceArchive
+./native/windows/build.ps1 -Arch ia32 -Source build/native-source
 ```
 
-Change `--x64` to `--ia32` for 32-bit Windows, or use
-`--linux AppImage deb --x64` / `--arm64` for Linux packages. Linux desktop builds
-need GTK 3, NSS, XSS, and XTest system libraries. CI builds release packages on
-native Windows and Linux runners; see `.github/workflows/desktop-release.yml`.
+See [native Windows build/recovery/license details](native/windows/README.md).
+Old Electron workspace.json is preserved; its tabs are exported once to recovered
+copies. The native interface and preference/session format follow Notepad++.
+
+Linux remains on Electron 1.1.0 packaging: x64/ARM64 AppImage and Debian packages.
+Build it with Node.js 22+ using `npm ci`, `npm test`, and:
+
+```sh
+npm run dist -- --linux AppImage deb --x64 --publish never
+```
+
+Use `--arm64` for ARM64. `npm run dist -- --win ...` now routes to the small
+native build on Windows and refuses Electron Windows cross-builds on Linux.
+CI: `.github/workflows/windows-native.yml` (Windows) and
+`.github/workflows/desktop-release.yml` (Linux).
 
 ## Android build
 
@@ -130,9 +149,11 @@ folder search, system clipboard, split view, network blocking, and recovery of
 an edit made immediately before closing. On headless Linux, run it with
 `xvfb-run -a npm run test:desktop`.
 
-Release CI installs each generated Windows installer and runs the desktop tests
-against the installed app. Linux jobs verify the AppImage and Debian package
-architectures and run the desktop tests against the packaged executable.
+Windows native CI installs, tests and uninstalls each generated installer,
+then tests its portable ZIP with Win32/Scintilla checks. Those tests cover
+Unicode/BOM/CRLF, save, undo/redo, lexers, split view, macros, Find, clean close
+and previous Electron-workspace recovery. Linux CI retains the Electron tests
+and verifies AppImage/Debian architectures.
 
 For browser integration tests, install Playwright separately, install Chromium,
 then run:
@@ -152,6 +173,9 @@ running Android 14. The published APK has WebView debugging disabled.
 
 ## License
 
-AnoteP code and original artwork: MIT. CodeMirror and its bundled modes/addons:
+Native Windows 1.2.0 derivative: GPL-3.0, with upstream copyright and third-party
+notices retained and complete corresponding source supplied.
+
+Original AnoteP Android/Linux code and artwork: MIT. CodeMirror and modes/addons:
 MIT; see `app/src/main/assets/vendor/LICENSE-CodeMirror.txt`. Attribution is also
 available inside the app under **? → Open source licenses**.

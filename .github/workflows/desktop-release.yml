@@ -1,49 +1,14 @@
-name: Desktop installers
+name: Linux desktop packages
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["linux-v*"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [ia32, x64]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run icons
-      - run: node scripts/desktop-integration.cjs
-      - run: npx electron-builder --win nsis --${{ matrix.arch }} --publish never
-      - name: Install and test the generated installer
-        shell: pwsh
-        run: |
-          $installer = (Get-ChildItem release/*.exe | Select-Object -First 1).FullName
-          $installDir = Join-Path $env:RUNNER_TEMP 'AnoteP Installed'
-          $process = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
-          $env:ANOTEP_TEST_EXECUTABLE = Join-Path $installDir 'AnoteP.exe'
-          node scripts/verify-binary-arch.cjs "$env:ANOTEP_TEST_EXECUTABLE" pe ${{ matrix.arch }}
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node scripts/desktop-integration.cjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-${{ matrix.arch }}
-          path: release/*.exe
-          if-no-files-found: error
-
   linux:
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -85,7 +50,7 @@ jobs:
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [windows, linux]
+    needs: [linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

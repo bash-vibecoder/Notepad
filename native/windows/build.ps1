@@ -32,6 +32,13 @@ Copy-Item "$Source\PowerEditor\installer\APIs" "$stage\autoCompletion" -Recurse
 Copy-Item "$Source\PowerEditor\installer\functionList", "$Source\PowerEditor\installer\themes", "$Source\PowerEditor\bin\userDefineLangs" $stage -Recurse
 Copy-Item "$Source\LICENSE" "$stage\LICENSE.txt"
 Copy-Item "$PSScriptRoot\NOTICE.txt" "$stage\NOTICE.txt"
+New-Item -ItemType Directory -Force "$stage\licenses" | Out-Null
+Copy-Item "$Source\scintilla\License.txt" "$stage\licenses\Scintilla.txt"
+Copy-Item "$Source\lexilla\License.txt" "$stage\licenses\Lexilla.txt"
+Copy-Item "$Source\scintilla\test\unit\LICENSE_1_0.txt" "$stage\licenses\Boost.txt"
+Copy-Item "$Source\PowerEditor\src\pugixml\LICENSE.md" "$stage\licenses\pugixml.txt"
+Copy-Item "$PSScriptRoot\json-LICENSE.MIT" "$stage\licenses\json.txt"
+Copy-Item "$Source\PowerEditor\src\uchardet\README.TXT" "$stage\licenses\uchardet.txt"
 Copy-Item "$Source\PowerEditor\installer\xml4Config\disableNppAutoUpdate.xml" $stage
 Set-Content "$stage\noEasterEggs.xml" ''
 

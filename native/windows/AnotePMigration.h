@@ -68,12 +68,13 @@ inline void migrateAnotePWorkspace()
 			while (!name.empty() && (name.back() == '.' || name.back() == ' '))
 				name.pop_back();
 			name = std::to_string(index) + "-" + (name.empty() ? "document.txt" : name);
-			std::ofstream output(temporary / fs::u8path(name), std::ios::binary);
+			const fs::path relative = std::u8string(name.begin(), name.end());
+			std::ofstream output(temporary / relative, std::ios::binary);
 			output.exceptions(std::ios::failbit | std::ios::badbit);
 			output << "\xEF\xBB\xBF" << document["text"].get<std::string>();
 			output.close();
 			locations += name + "\r\nOriginal: " + document.value("uri", "(unsaved tab)") + "\r\n\r\n";
-			const auto file = (recovered / fs::u8path(name)).u8string();
+			const auto file = (recovered / relative).u8string();
 			files += "<File filename=\"" + anotepXmlEscape(std::string(file.begin(), file.end())) + "\" />\n";
 		}
 		fs::copy_file(original, temporary / L"workspace.json");

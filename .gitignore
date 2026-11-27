@@ -6,3 +6,5 @@
 /desktop/icons/*.ico
 /desktop/icons/*.png
 *.idsig
+__pycache__/
+*.pyc
