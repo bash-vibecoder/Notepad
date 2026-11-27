@@ -50,11 +50,11 @@ async function launch() {
   page = browser.contexts()[0].pages()[0];
   page.setDefaultTimeout(20000);
   page.on('pageerror', error => console.error('Editor error:', error.message));
+  await page.waitForSelector('.document-tab');
   await page.evaluate(() => {
     window.__nativeTestEvents = [];
     chrome.webview.addEventListener('message', event => window.__nativeTestEvents.push(event.data));
   });
-  await page.waitForSelector('.document-tab');
   return page;
 }
 const run = action => page.evaluate(action => { App.run(action); }, action);
