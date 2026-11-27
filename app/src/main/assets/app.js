@@ -620,7 +620,7 @@
   async function about(){
     const desktop=window.AnotePNative?.platform==='desktop';
     const body=document.createElement('div'),image=document.createElement('img');image.src='icon.svg';image.className='about-logo';image.alt='AnoteP penguin and notepad';
-    body.append(image,textNode('div',desktop?'AnoteP Desktop 1.1.0':'AnoteP 1.0','about-name'),textNode('p',desktop?'A local desktop text and source-code editor inspired by the classic Notepad++ workflow.':'A local Android text and source-code editor inspired by the classic Notepad++ workflow.'),
+    body.append(image,textNode('div',desktop?'AnoteP Desktop '+(window.AnotePNative.version||'1.1.0'):'AnoteP 1.0','about-name'),textNode('p',desktop?'A local desktop text and source-code editor inspired by the classic Notepad++ workflow.':'A local Android text and source-code editor inspired by the classic Notepad++ workflow.'),
       textNode('p',desktop?'Built for offline editing. Files stay on this computer. No account, ads, or network access.':'Built for offline editing. No account. No Internet permission. No ads.'),
       textNode('p','AnoteP is an independent app, not an official Notepad++ port. Notepad++ plugins, Scintilla, and full Notepad++ feature parity are not included. The editing engine is CodeMirror 5 (MIT license).'));
     await dialog('About AnoteP',body);

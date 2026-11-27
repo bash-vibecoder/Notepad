@@ -1,4 +1,4 @@
-name: Linux desktop packages
+name: Small Linux packages
 
 on:
   push:
@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   linux:
+    timeout-minutes: 20
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -17,48 +18,81 @@ jobs:
         include:
           - arch: x64
             runner: ubuntu-22.04
-            unpacked: linux-unpacked
-            deb_arch: amd64
           - arch: arm64
             runner: ubuntu-24.04-arm
-            unpacked: linux-arm64-unpacked
-            deb_arch: arm64
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run icons
-      - run: xvfb-run -a node scripts/desktop-integration.cjs
-      - run: npx electron-builder --linux AppImage deb --${{ matrix.arch }} --publish never
-      - run: |
-          node scripts/verify-binary-arch.cjs release/*.AppImage elf ${{ matrix.arch }}
-          test "$(dpkg-deb --field release/*.deb Architecture)" = "${{ matrix.deb_arch }}"
-          dpkg-deb -x release/*.deb "$RUNNER_TEMP/anotep-deb"
-          node scripts/verify-binary-arch.cjs "$RUNNER_TEMP/anotep-deb/opt/AnoteP/anotep" elf ${{ matrix.arch }}
-      - run: ANOTEP_TEST_EXECUTABLE="$PWD/release/${{ matrix.unpacked }}/anotep" xvfb-run -a node scripts/desktop-integration.cjs
+      - name: Install shared runtime and headless test tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 xvfb xauth dbus-x11
+      - name: File fidelity and recovery tests
+        run: python3 -m unittest discover -s native/linux -p 'test_*.py' -v
+      - name: Build .deb and portable archive (each below 1 MiB)
+        run: python3 native/linux/build.py
+      - name: Verify and exercise the portable package
+        run: |
+          cd release
+          sha256sum --check SHA256SUMS-linux.txt
+          test "$(dpkg-deb --field AnoteP-*-linux.deb Architecture)" = all
+          tar -xf AnoteP-*-linux-portable.tar.xz -C "$RUNNER_TEMP"
+          portable=$(find "$RUNNER_TEMP" -maxdepth 1 -type d -name 'AnoteP-*' -print -quit)
+          "$portable/anotep" --version
+          cd ..
+          ANOTEP_TEST_HOME="$portable" xvfb-run -a dbus-run-session -- python3 native/linux/smoke-test.py
+      - name: Install and exercise .deb
+        run: |
+          sudo apt-get install -y ./release/AnoteP-*-linux.deb
+          anotep --version
+          test -f /usr/share/applications/anotep.desktop
+          ANOTEP_TEST_HOME=/usr/share/anotep xvfb-run -a dbus-run-session -- python3 native/linux/smoke-test.py
+          sudo apt-get remove -y anotep
+          test ! -e /usr/bin/anotep
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ matrix.arch }}
+          name: linux-small-${{ matrix.arch }}
           path: |
-            release/*.AppImage
-            release/*.deb
+            release/AnoteP-*-linux.deb
+            release/AnoteP-*-linux-portable.tar.xz
+            release/SHA256SUMS-linux.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-screenshot-${{ matrix.arch }}
+          path: build/screenshots/linux-webkit.png
           if-no-files-found: error
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/linux-v')
     needs: [linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: linux-small-x64
           path: release
-          merge-multiple: true
-      - run: cd release && sha256sum * > SHA256SUMS.txt
+      - run: cd release && sha256sum --check SHA256SUMS-linux.txt
       - uses: softprops/action-gh-release@v2
         with:
-          name: AnoteP Desktop ${{ github.ref_name }}
-          files: release/*
+          name: AnoteP Linux ${{ github.ref_name }} — small packages
+          make_latest: false
+          body: |
+            Small Linux .deb and portable .tar.xz, using the shared system WebKitGTK runtime instead of bundling Electron. Each download is under 1 MiB; both files support x86-64 and ARM64.
+
+            Requirements: Python 3.10+, PyGObject, GTK 3, WebKit2GTK 4.1 (WebKit 2.40+). Debian 12+ or Ubuntu 22.04+ with current updates.
+
+            Install the .deb with `sudo apt install ./AnoteP-1.3.0-linux.deb` so APT resolves dependencies.
+
+            For portable use, install the runtime once with `sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1`, extract the archive to a writable directory and run `./AnoteP-1.3.0/anotep`. Recovery stays in its adjacent `profile/` directory. This is a portable archive, not a self-contained AppImage.
+
+            Download sizes exclude the system runtime. Missing dependencies can require tens of MB to download and considerably more installed space. The app does not download runtimes itself and works offline after dependencies are installed.
+
+            Existing editor features remain: tabs, 121 language modes, automatic language detection, find/replace, folder search, split view, macros, encoding/line-ending controls, clipboard and local recovery. Installed builds reuse the preceding Electron workspace format and location.
+
+            CI tests both packaged editions on x86-64 and ARM64: real WebKit UI, native bridge, local open/save, Unicode/BOM/CRLF, conflict handling, folder search, clipboard, syntax, split view, network/navigation blocking and close/relaunch recovery. SHA-256 checksums included. Complete source is in this tag and inside the Python/JavaScript packages.
+
+            Windows native 1.2.0 and Android 1.0 remain in their existing releases.
+          files: |
+            release/AnoteP-*-linux.deb
+            release/AnoteP-*-linux-portable.tar.xz
+            release/SHA256SUMS-linux.txt

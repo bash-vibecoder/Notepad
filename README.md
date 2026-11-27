@@ -7,15 +7,17 @@ editions keep editing local. Windows 1.2.0 uses native C++/Scintilla based on
 Notepad++ 8.9.9.1. Android and Linux use the independent bundled CodeMirror
 editor; those editions block remote navigation and network requests.
 
-[Download Android APK](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.0)
-or [small native Windows installers](https://github.com/bash-vibecoder/Notepad/releases/latest).
-[Linux packages](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.1.0)
-remain available in the preceding release.
+[Download Android APK](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.0),
+[small native Windows installers](https://github.com/bash-vibecoder/Notepad/releases/tag/v1.2.0),
+or [small Linux .deb and portable archive](https://github.com/bash-vibecoder/Notepad/releases/tag/linux-v1.3.0).
 
 The Android APK supports Android 8.0 or newer and runs on ARM64, ARMv7, and x86;
 it contains no architecture-specific native libraries. Desktop releases provide
-Windows x86 and x64 installers, plus Linux x64 and ARM64 AppImage and `.deb`
-packages. There are no accounts, ads, or analytics.
+Windows x86 and x64 installers, plus architecture-independent Linux `.deb` and
+portable `.tar.xz` packages tested on x64 and ARM64. Linux 1.3.0 uses the system
+Python/GTK/WebKitGTK runtime, with each app download below 1 MiB. Runtime
+dependencies are separate and can require substantial additional space if not
+already installed. There are no accounts, ads, or analytics.
 
 <p>
   <img src="docs/screenshots/light.png" width="280" alt="AnoteP light theme with two rows of menus and keyboard controls">
@@ -102,15 +104,34 @@ See [native Windows build/recovery/license details](native/windows/README.md).
 Old Electron workspace.json is preserved; its tabs are exported once to recovered
 copies. The native interface and preference/session format follow Notepad++.
 
-Linux remains on Electron 1.1.0 packaging: x64/ARM64 AppImage and Debian packages.
-Build it with Node.js 22+ using `npm ci`, `npm test`, and:
+Linux 1.3.0 also removes the bundled Electron runtime. A small Python/GTK host
+uses the distribution's WebKitGTK 4.1 library with the same bundled editor UI.
+Both `.deb` and portable `.tar.xz` packages support x64 and ARM64. The build
+rejects either app download at 1 MiB or larger. These sizes exclude shared
+runtime libraries; this is not a self-contained AppImage.
+
+On Debian 12+/Ubuntu 22.04+ with current updates, install the `.deb` with:
 
 ```sh
-npm run dist -- --linux AppImage deb --x64 --publish never
+sudo apt install ./AnoteP-1.3.0-linux.deb
+anotep
 ```
 
-Use `--arm64` for ARM64. `npm run dist -- --win ...` now routes to the small
-native build on Windows and refuses Electron Windows cross-builds on Linux.
+For portable use, install the shared runtime once, extract to a writable folder,
+and run the launcher. Its `profile/` directory holds preferences and recovery:
+
+```sh
+sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+tar -xf AnoteP-1.3.0-linux-portable.tar.xz
+./AnoteP-1.3.0/anotep
+```
+
+Build both Linux packages using `python3 native/linux/build.py` (Python 3 and
+`dpkg-deb`; no npm needed), or `npm run dist -- --linux`. See
+[small Linux details](native/linux/README.md) for dependencies, portable profiles,
+recovery compatibility and tests. Installed builds reuse the previous Electron
+workspace location/schema. `npm run dist -- --win ...` routes to the small
+native Windows build and refuses Electron Windows cross-builds on Linux.
 CI: `.github/workflows/windows-native.yml` (Windows) and
 `.github/workflows/desktop-release.yml` (Linux).
 
@@ -143,7 +164,7 @@ debugging. Do not publish the debug APK.
 checks, 24 language-detection checks, signature and alignment checks, and an APK
 audit for bundled assets, application identity, and absence of permissions.
 `npm test` checks desktop text encoding and line-ending fidelity.
-`npm run test:desktop` runs the real Electron app and checks the isolated bridge,
+`npm run test:desktop` tests the archived Electron host and checks the isolated bridge,
 local open/save and Save As, encoding preservation, external-change conflicts,
 folder search, system clipboard, split view, network blocking, and recovery of
 an edit made immediately before closing. On headless Linux, run it with
@@ -152,8 +173,15 @@ an edit made immediately before closing. On headless Linux, run it with
 Windows native CI installs, tests and uninstalls each generated installer,
 then tests its portable ZIP with Win32/Scintilla checks. Those tests cover
 Unicode/BOM/CRLF, save, undo/redo, lexers, split view, macros, Find, clean close
-and previous Electron-workspace recovery. Linux CI retains the Electron tests
-and verifies AppImage/Debian architectures.
+and previous Electron-workspace recovery. Linux CI tests file fidelity and
+the actual WebKitGTK editor on x64 and ARM64, verifies the architecture-independent
+packages, runs both extracted payloads, installs/removes the `.deb`, and checks
+the size limit and checksums. Local Linux tests:
+
+```sh
+python3 -m unittest discover -s native/linux -p 'test_*.py' -v
+xvfb-run -a dbus-run-session -- python3 native/linux/smoke-test.py
+```
 
 For browser integration tests, install Playwright separately, install Chromium,
 then run:

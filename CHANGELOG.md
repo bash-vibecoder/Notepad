@@ -1,3 +1,19 @@
+# AnoteP Linux 1.3.0
+
+Replaces bundled Electron on Linux with a small Python/GTK host using the system
+WebKitGTK runtime. Architecture-independent `.deb` and portable `.tar.xz`
+packages support x64 and ARM64, with a strict 1 MiB app-download ceiling.
+Shared Python/GTK/WebKitGTK runtime dependencies are separate; the portable
+archive is not a self-contained AppImage.
+
+Preserves the existing bundled editor/language modes, GTK file dialogs,
+clipboard, file-change conflicts, encoding/line-ending fidelity, folder search
+and local recovery. Close waits for the final recovery write. Installed builds
+reuse Electron's workspace location and schema; portable profiles stay beside
+the launcher. Network/navigation blocking is enabled before editor startup.
+CI verifies both packaged payloads on x64 and ARM64 before publishing.
+Windows 1.2.0 and Android 1.0 are unchanged.
+
 # AnoteP Windows 1.2.0
 
 Replaces the large Electron Windows edition with a native C++/Scintilla build

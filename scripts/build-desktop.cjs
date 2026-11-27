@@ -9,7 +9,7 @@ if (process.platform === 'win32' || args.includes('--win')) {
   const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'native/windows/build.ps1'), '-Arch', arch], {cwd: root, stdio: 'inherit'});
   process.exit(result.status ?? 1);
 }
-let result = spawnSync(process.execPath, [path.join(root, 'scripts/build-desktop-icons.cjs')], {cwd: root, stdio: 'inherit'});
-if (result.status) process.exit(result.status);
-result = spawnSync(process.execPath, [require.resolve('electron-builder/out/cli/cli.js'), ...args], {cwd: root, stdio: 'inherit'});
+if (args.includes('AppImage')) throw new Error('Small Linux packages use system WebKitGTK: build the .deb and portable .tar.xz with npm run dist -- --linux. The large Electron AppImage is retired.');
+if (process.platform !== 'linux') throw new Error('Build the Linux .deb and portable archive on Linux with Python 3 and dpkg-deb.');
+const result = spawnSync('python3', [path.join(root, 'native/linux/build.py')], {cwd: root, stdio: 'inherit'});
 process.exit(result.status ?? 1);
