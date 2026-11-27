@@ -2,6 +2,8 @@
 import ctypes as c
 from ctypes import wintypes as w
 import sys
+import subprocess
+from pathlib import Path
 import time
 
 user = c.WinDLL('user32', use_last_error=True)
@@ -43,8 +45,7 @@ def main():
             if user.IsWindowVisible(hwnd) and (text(hwnd, True) == 'AnoteP' or text(hwnd, True) == '#32770'):
                 print('WINDOW', text(hwnd, True), text(hwnd))
                 for child in windows(hwnd):
-                    if text(child):
-                        print('  CONTROL', text(child, True), user.GetDlgCtrlID(child), text(child)[:600])
+                    print('  CONTROL', text(child, True), user.GetDlgCtrlID(child), text(child)[:600])
         return
     title, action = sys.argv[1:3]
     deadline = time.monotonic() + 25
@@ -57,29 +58,11 @@ def main():
             user.PostMessageW(dialog, 0x111, 2 if action == 'cancel' else 1, 0)
             print('Native dialog dismissed:', title)
             return
-        # The shell also exposes search-box Edit controls with ID 1001.
-        # Address the filename ComboBox (1148), and let initialization settle.
-        time.sleep(.5)
-        children = windows(dialog)
-        edits = [h for h in children if text(h, True) == 'Edit'
-                 and user.IsWindowVisible(h) and user.IsWindowEnabled(h)
-                 and (user.GetDlgCtrlID(h) == 1148
-                      or user.GetDlgCtrlID(user.GetParent(h)) == 1148)]
-        if not edits:
-            time.sleep(.1)
-            continue
-        value = c.create_unicode_buffer(sys.argv[3])
-        edit = edits[0]
-        user.SendMessageW(dialog, 0x0028, edit, 1)  # WM_NEXTDLGCTL
-        user.SendMessageW(edit, 0x000C, 0, c.addressof(value))
-        user.SendMessageW(user.GetParent(edit), 0x0111,
-                          user.GetDlgCtrlID(edit) | (0x0300 << 16), edit)
-        time.sleep(.15)
-        actual = c.create_unicode_buffer(32768)
-        user.SendMessageW(edit, 0x000D, len(actual), c.addressof(actual))
-        if actual.value != sys.argv[3]:
-            continue
-        print('Native filename field:', actual.value)
+        # UI Automation can address DirectUI fields that are not native Edit HWNDs.
+        subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                        '-File', str(Path(__file__).with_name('dialog-value.ps1')),
+                        '-WindowHandle', str(dialog), '-FilePath', sys.argv[3]],
+                       check=True, timeout=15)
         user.PostMessageW(dialog, 0x111, 1, 0)
         print('Native dialog accepted:', title)
         return
