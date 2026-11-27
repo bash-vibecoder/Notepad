@@ -1,5 +1,5 @@
-AnoteP 1.0
-Independent Android editor. Not affiliated with Notepad++.
+AnoteP
+Independent offline editor for Android, Windows and Linux. Not affiliated with Notepad++.
 
 CodeMirror 5.65.20 (MIT)
 https://codemirror.net/5/

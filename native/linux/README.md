@@ -8,9 +8,9 @@ The same architecture-independent files run on x86-64 and ARM64 Linux.
 **These packages use the system WebKitGTK runtime.** Their download sizes do
 not include Python, GTK, PyGObject or WebKitGTK. If those are missing, installing
 them can add tens of MB of downloads and considerably more installed space.
-This is the same shared-runtime approach as the Android edition, rather than
-a self-contained browser bundle. Windows keeps its separate native Scintilla
-edition. The portable archive is not a self-contained AppImage.
+Android uses its system WebView and Windows uses its system WebView2 runtime
+for the same bundled AnoteP editor. The portable archive is not a self-contained
+AppImage.
 
 ## Debian / Ubuntu installation
 

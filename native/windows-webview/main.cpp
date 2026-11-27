@@ -11,6 +11,7 @@
 #include <wrl.h>
 #include <WebView2.h>
 #include <WebView2EnvironmentOptions.h>
+#include <cstdio>
 #include <memory>
 #include "core.h"
 #include "migrate.h"
@@ -397,27 +398,38 @@ public:
         const auto status = CreateCoreWebView2EnvironmentWithOptions(nullptr, cache.c_str(), options.Get(), Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [this](HRESULT status, ICoreWebView2Environment* created) -> HRESULT
             {
-                if (FAILED(status) || !created) { missingRuntime(); return S_OK; }
+                if (FAILED(status) || !created) { startupFailure(status, "environment"); return S_OK; }
                 environment = created;
-                environment->CreateCoreWebView2Controller(window, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                const auto controllerStatus = environment->CreateCoreWebView2Controller(window, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
                     [this](HRESULT status, ICoreWebView2Controller* created) -> HRESULT
                     {
-                        if (FAILED(status) || !created) { missingRuntime(); return S_OK; }
+                        if (FAILED(status) || !created) { startupFailure(status, "controller"); return S_OK; }
                         controller = created;
                         controller->get_CoreWebView2(&web);
                         try { configure(); }
                         catch (const std::exception& failure) { error(failure.what()); DestroyWindow(window); }
                         return S_OK;
                     }).Get());
+                if (FAILED(controllerStatus)) startupFailure(controllerStatus, "controller request");
                 return S_OK;
             }).Get());
-        if (FAILED(status)) missingRuntime();
+        if (FAILED(status)) startupFailure(status, "environment request");
     }
 
-    void missingRuntime()
+    void startupFailure(HRESULT status, const char* stage)
     {
         exitCode = 2;
-        error("AnoteP requires the Microsoft Edge WebView2 Runtime installed on this PC.\nInstall the matching Microsoft offline runtime installer, then reopen AnoteP.\nAnoteP does not download a runtime or connect to the Internet itself.");
+        PWSTR runtime = nullptr;
+        const auto found = GetAvailableCoreWebView2BrowserVersionString(nullptr, &runtime);
+        const bool installed = SUCCEEDED(found) && runtime && *runtime;
+        if (runtime) CoTaskMemFree(runtime);
+        char code[16]{};
+        std::snprintf(code, sizeof(code), "0x%08lX", static_cast<unsigned long>(FAILED(status) ? status : E_FAIL));
+        const std::string diagnostic = std::string("\nWebView2 ") + stage + ": " + code;
+        if (installed)
+            error("The installed Microsoft Edge WebView2 Runtime could not start.\nClose AnoteP and try again. If this continues, repair the system WebView2 Runtime.\nYour saved recovery data has not been changed." + diagnostic);
+        else
+            error("AnoteP requires the Microsoft Edge WebView2 Runtime installed on this PC.\nInstall the matching Microsoft offline runtime installer, then reopen AnoteP.\nAnoteP does not download a runtime or connect to the Internet itself." + diagnostic);
         DestroyWindow(window);
     }
 };
