@@ -124,6 +124,15 @@ debugging. Do not publish the debug APK.
 checks, 24 language-detection checks, signature and alignment checks, and an APK
 audit for bundled assets, application identity, and absence of permissions.
 `npm test` checks desktop text encoding and line-ending fidelity.
+`npm run test:desktop` runs the real Electron app and checks the isolated bridge,
+local open/save and Save As, encoding preservation, external-change conflicts,
+folder search, system clipboard, split view, network blocking, and recovery of
+an edit made immediately before closing. On headless Linux, run it with
+`xvfb-run -a npm run test:desktop`.
+
+Release CI installs each generated Windows installer and runs the desktop tests
+against the installed app. Linux jobs verify the AppImage and Debian package
+architectures and run the desktop tests against the packaged executable.
 
 For browser integration tests, install Playwright separately, install Chromium,
 then run:

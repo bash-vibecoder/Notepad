@@ -1,0 +1,58 @@
+name: Publish verified packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Desktop installers workflow run
+        required: true
+        type: string
+      release_tag:
+        description: Draft release containing the signed Android APK
+        required: true
+        default: v1.1.0
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN: ${{ inputs.run_id }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Validate the build and draft release
+        run: |
+          build=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN")
+          test "$(jq -r .status <<< "$build")" = completed
+          test "$(jq -r .conclusion <<< "$build")" = success
+          test "$(jq -r .path <<< "$build")" = .github/workflows/desktop-release.yml
+          test "$(jq -r .head_repository.full_name <<< "$build")" = "$GITHUB_REPOSITORY"
+          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")
+          test "$(jq -r .draft <<< "$release")" = true
+          test "$(jq -r .target_commitish <<< "$release")" = "$(jq -r .head_sha <<< "$build")"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          path: release
+          merge-multiple: true
+      - name: Include Android and generate checksums
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir release
+          test "$(find release -name '*.exe' | wc -l)" = 2
+          test "$(find release -name '*.AppImage' | wc -l)" = 2
+          test "$(find release -name '*.deb' | wc -l)" = 2
+          test "$(find release -name '*.apk' | wc -l)" = 1
+          cd release
+          sha256sum *.exe *.AppImage *.deb *.apk > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+      - name: Upload and publish the verified packages
+        run: |
+          gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
