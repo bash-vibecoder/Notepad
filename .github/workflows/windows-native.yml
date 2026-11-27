@@ -1,0 +1,109 @@
+name: Small native Windows installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish verified installers and corresponding source as v1.2.0
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ia32, x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pillow
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          if (!(Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis -y --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Build the native C++ application and installer
+        shell: pwsh
+        run: ./native/windows/build.ps1 -Arch ${{ matrix.arch }} -SourceArchive:($${{ matrix.arch == 'x64' }})
+      - name: Install, verify, test and uninstall
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path 'release/AnoteP-1.2.0-win-${{ matrix.arch }}.exe').Path
+          $installDir = Join-Path $env:RUNNER_TEMP 'AnoteP Native Installed'
+          $p = Start-Process $installer -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
+          node scripts/verify-binary-arch.cjs "$installDir/AnoteP.exe" pe ${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python native/windows/smoke-test.py "$installDir/AnoteP.exe" --label installed-${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $p = Start-Process "$installDir/Uninstall.exe" -ArgumentList '/S' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
+          if (Test-Path "$installDir/AnoteP.exe") { throw 'Uninstall left the executable behind' }
+      - name: Verify portable package
+        shell: pwsh
+        run: |
+          $portable = Join-Path $env:RUNNER_TEMP 'AnoteP Portable'
+          Expand-Archive release/AnoteP-1.2.0-win-${{ matrix.arch }}-portable.zip $portable
+          node scripts/verify-binary-arch.cjs "$portable/AnoteP.exe" pe ${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python native/windows/smoke-test.py "$portable/AnoteP.exe" --label portable-${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-windows-${{ matrix.arch }}
+          path: release/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-windows-checks-${{ matrix.arch }}
+          path: |
+            native-*.png
+            native-*-checks.json
+
+  publish:
+    if: inputs.publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-windows-*
+          path: gathered
+      - name: Publish small Windows packages and exact source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir release
+          find gathered -type f \( -name '*.exe' -o -name '*.zip' \) -exec cp {} release/ \;
+          test "$(find release -name '*.exe' | wc -l)" = 2
+          test "$(find release -name '*-portable.zip' | wc -l)" = 2
+          test -s release/AnoteP-1.2.0-windows-source.zip
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+          cat > notes.txt <<'NOTES'
+          Windows size reduction: native C++/Scintilla replaces Electron.
+
+          Separate x86 (ia32, 32-bit) and x64 (64-bit) installers and portable ZIPs. No Chromium, Node.js, WebView2 dependency, runtime downloader, updater or bundled third-party plugins. The interactive installer supports a custom folder and shortcuts; uninstall preserves user profiles.
+
+          This is a modified Notepad++ 8.9.9.1 build with the AnoteP name and penguin icon. It uses the native Notepad++ interface and feature set rather than the Android/Electron interface. Upstream copyright and GPL-3.0 notices are retained. The exact patched source and vendored dependencies are included in AnoteP-1.2.0-windows-source.zip.
+
+          Existing Electron workspace.json is preserved. On first native launch, its tabs are exported as UTF-8 recovery copies under %APPDATA%\AnoteP\Native\Recovered; use Save As for original paths. Native sessions/preferences are separate.
+
+          Both installers and portable packages are tested on Windows: architecture, installation, Unicode/BOM/CRLF open/save, undo/redo, native syntax highlighting, split view, macros, Find, close and previous-workspace recovery. SHA256SUMS.txt covers the installers, portable ZIPs and source archive.
+
+          Windows installers are unsigned. Android and Linux packages remain available in the preceding releases; this release changes Windows only.
+          NOTES
+          gh release create v1.2.0 *.exe *.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AnoteP 1.2.0 — small native Windows edition' --notes-file notes.txt --latest
