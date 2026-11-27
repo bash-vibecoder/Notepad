@@ -27,15 +27,18 @@ jobs:
       RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
       - name: Validate the build and draft release
+        id: source
         run: |
           build=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN")
           test "$(jq -r .status <<< "$build")" = completed
           test "$(jq -r .conclusion <<< "$build")" = success
           test "$(jq -r .path <<< "$build")" = .github/workflows/desktop-release.yml
           test "$(jq -r .head_repository.full_name <<< "$build")" = "$GITHUB_REPOSITORY"
-          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")
+          release=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == env.RELEASE_TAG and .draft == true)')
+          test -n "$release"
           test "$(jq -r .draft <<< "$release")" = true
           test "$(jq -r .target_commitish <<< "$release")" = "$(jq -r .head_sha <<< "$build")"
+          echo "release_id=$(jq -r .id <<< "$release")" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -43,8 +46,14 @@ jobs:
           path: release
           merge-multiple: true
       - name: Include Android and generate checksums
+        env:
+          RELEASE_ID: ${{ steps.source.outputs.release_id }}
         run: |
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir release
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets")
+          apk=$(jq -r '.[] | select(.name | endswith(".apk")) | .id' <<< "$assets")
+          name=$(jq -r '.[] | select(.name | endswith(".apk")) | .name' <<< "$assets")
+          test -n "$apk"
+          gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$apk" > "release/$name"
           test "$(find release -name '*.exe' | wc -l)" = 2
           test "$(find release -name '*.AppImage' | wc -l)" = 2
           test "$(find release -name '*.deb' | wc -l)" = 2
@@ -53,6 +62,16 @@ jobs:
           sha256sum *.exe *.AppImage *.deb *.apk > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
       - name: Upload and publish the verified packages
+        env:
+          RELEASE_ID: ${{ steps.source.outputs.release_id }}
         run: |
-          gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
-          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          for file in release/*.exe release/*.AppImage release/*.deb release/SHA256SUMS.txt; do
+            name=$(basename "$file")
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" -H 'Content-Type: application/octet-stream' \
+              --data-binary "@$file" \
+              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$name" \
+              --output "$RUNNER_TEMP/upload.json"
+            jq -r '"Uploaded " + .name + " (" + .state + ")"' "$RUNNER_TEMP/upload.json"
+          done
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false -f make_latest=true --jq .html_url
