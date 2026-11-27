@@ -1,0 +1,24 @@
+name: Publish current platform variants
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Existing draft release ID to fill and publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_ID: ${{ inputs.release_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Transfer only verified current variants and publish
+        run: python3 scripts/publish-current.py
