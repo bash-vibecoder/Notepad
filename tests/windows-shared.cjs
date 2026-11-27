@@ -51,6 +51,7 @@ async function launch() {
   page.setDefaultTimeout(20000);
   page.on('pageerror', error => console.error('Editor error:', error.message));
   await page.waitForSelector('.document-tab');
+  if (diagnostic.length) console.log(diagnostic.join('').trim());
   await page.evaluate(() => {
     window.__nativeTestEvents = [];
     chrome.webview.addEventListener('message', event => window.__nativeTestEvents.push(event.data));
@@ -180,6 +181,13 @@ async function close(force = false) {
     await run('autoLanguage');
     await page.waitForFunction(()=>document.getElementById('languageStatus').textContent.includes('Python'));
     check(await page.locator('body').evaluate(b=>b.classList.contains('dark')),true,'Relaunch restores theme');
+    for (let restart = 1; restart <= 3; restart++) {
+      const text = 'rapid restart recovery ' + restart + ' 🐧';
+      await setText(text);
+      await close();
+      await launch();
+      check(await value(), text, 'Rapid relaunch preserves scratch text: ' + restart);
+    }
     await setText('periodic crash recovery 🐧');
     await waitFor(()=>JSON.parse(fs.readFileSync(path.join(profile,'workspace.json'),'utf8')).documents.some(d=>d.text==='periodic crash recovery 🐧'),'periodic recovery checkpoint');
     await close(true); await launch();

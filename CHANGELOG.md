@@ -11,6 +11,8 @@ views, recovery and offline UI behavior to Windows. A small original C++/Win32
 host supplies native file dialogs, clipboard, encodings and atomic storage.
 Prior native session/backup text is imported without changing the originals.
 The shared editor also snapshots during continuous typing, not just after idle.
+Rapid Windows relaunches retry a busy system WebView2 runtime for up to ten
+seconds, preserving the existing profile and recovery data.
 
 No engine/runtime is bundled or downloaded by the app. Windows requires the
 system WebView2 Runtime; Linux requires system WebKitGTK and Python/GTK. Those

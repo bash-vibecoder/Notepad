@@ -22,6 +22,7 @@ using Microsoft::WRL::Callback;
 using Microsoft::WRL::ComPtr;
 constexpr wchar_t origin[] = L"https://anotep.local/";
 constexpr wchar_t editorUrl[] = L"https://anotep.local/index.html";
+constexpr UINT_PTR startupRetryTimer = 1;
 class App;
 App* application = nullptr;
 
@@ -39,6 +40,7 @@ public:
     fs::path executable, assets, profile, oldProfile, cache;
     std::vector<fs::path> initialFiles;
     bool ready = false, closing = false;
+    ULONGLONG startupDeadline = 0;
     int exitCode = 0;
     HANDLE profileLock = INVALID_HANDLE_VALUE;
     std::string selectedFolder;
@@ -382,6 +384,13 @@ public:
         profileLock = CreateFileW((profile / L"instance.lock").c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         require(profileLock != INVALID_HANDLE_VALUE, "This recovery profile is already in use or is not writable. Switch to the existing AnoteP window, or choose another --profile directory.");
         fs::create_directories(cache);
+        startupDeadline = GetTickCount64() + 10000;
+        createEnvironment();
+    }
+
+    void createEnvironment()
+    {
+        if (closing || !IsWindow(window)) return;
         auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
         std::wstring browserArguments = L"--disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --no-first-run --disable-local-storage";
         // Honor the runtime's documented, user-supplied developer arguments.
@@ -418,6 +427,21 @@ public:
 
     void startupFailure(HRESULT status, const char* stage)
     {
+        if (closing || !IsWindow(window)) return;
+        // The previous runtime can still own this user-data folder just after
+        // its host closes. Keep the profile lock and pump messages while it
+        // finishes; never erase its cache or recovery to force a relaunch.
+        if (status == HRESULT_FROM_WIN32(ERROR_BUSY) && GetTickCount64() < startupDeadline)
+        {
+            controller.Reset(); web.Reset(); environment.Reset();
+            if (SetTimer(window, startupRetryTimer, 250, nullptr))
+            {
+                constexpr char message[] = "AnoteP: WebView2 startup is busy; retrying.\n";
+                DWORD written = 0;
+                WriteFile(GetStdHandle(STD_ERROR_HANDLE), message, sizeof(message) - 1, &written, nullptr);
+                return;
+            }
+        }
         exitCode = 2;
         PWSTR runtime = nullptr;
         const auto found = GetAvailableCoreWebView2BrowserVersionString(nullptr, &runtime);
@@ -437,6 +461,12 @@ public:
 LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM first, LPARAM second)
 {
     if (message == WM_SIZE && application) { application->resize(); return 0; }
+    if (message == WM_TIMER && first == startupRetryTimer && application)
+    {
+        KillTimer(window, startupRetryTimer);
+        application->createEnvironment();
+        return 0;
+    }
     if (message == WM_CLOSE && application) { application->close(); return 0; }
     if (message == WM_DESTROY) { PostQuitMessage(0); return 0; }
     return DefWindowProcW(window, message, first, second);

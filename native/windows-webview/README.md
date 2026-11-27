@@ -27,6 +27,9 @@ instances overwriting scratch recovery; --profile selects another profile.
 Close waits for the final recovery snapshot to be flushed to disk. A failed
 write keeps the editor open. Periodic recovery protects against termination;
 edits after the last completed snapshot can still be lost on forced exit.
+An immediate relaunch retries a busy WebView2 runtime for up to ten seconds
+while the previous runtime releases the profile. Recovery and cache files are
+preserved. Other startup failures report their error code.
 
 On first shared-host launch, the previous native session.xml and its backup
 files are read into the shared workspace. Those files and original documents
