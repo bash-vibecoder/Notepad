@@ -185,7 +185,9 @@ async function close(force = false) {
     await close(true); await launch();
     check(await value(),'periodic crash recovery 🐧','Recovery survives forced host termination');
     await close();
-    const native=path.join(profile,'Native');fs.mkdirSync(path.join(native,'backup'),{recursive:true});
+    const native=fs.existsSync(path.join(path.dirname(executable),'portable.flag'))
+      ? path.dirname(executable) : path.join(profile,'Native');
+    fs.mkdirSync(path.join(native,'backup'),{recursive:true});
     const backup=path.join(native,'backup','new 7@test');fs.writeFileSync(backup,'\ufeffprevious native scratch 🐧\r\n');
     const session=path.join(native,'session.xml');
     const escaped=backup.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
