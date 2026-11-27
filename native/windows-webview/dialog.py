@@ -58,12 +58,11 @@ def main():
             user.PostMessageW(dialog, 0x111, 2 if action == 'cancel' else 1, 0)
             print('Native dialog dismissed:', title)
             return
-        # UI Automation can address DirectUI fields that are not native Edit HWNDs.
+        # Keyboard input exercises the visible shell filename field.
         subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
                         '-File', str(Path(__file__).with_name('dialog-value.ps1')),
                         '-WindowHandle', str(dialog), '-FilePath', sys.argv[3]],
                        check=True, timeout=15)
-        user.PostMessageW(dialog, 0x111, 1, 0)
         print('Native dialog accepted:', title)
         return
     raise SystemExit('Could not automate dialog: ' + title)
