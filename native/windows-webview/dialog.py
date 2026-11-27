@@ -37,7 +37,7 @@ def windows(parent=None):
 def main():
     if sys.argv[1] == 'inspect':
         for hwnd in windows():
-            if user.IsWindowVisible(hwnd) and (text(hwnd, True) == 'AnoteP' or (text(hwnd, True) == '#32770' and 'AnoteP' in text(hwnd))):
+            if user.IsWindowVisible(hwnd) and (text(hwnd, True) == 'AnoteP' or text(hwnd, True) == '#32770'):
                 print('WINDOW', text(hwnd, True), text(hwnd))
                 for child in windows(hwnd):
                     if text(child):

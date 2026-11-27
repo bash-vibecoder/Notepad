@@ -49,6 +49,11 @@ async function launch() {
   await waitFor(() => browser.contexts()[0]?.pages().length, 'AnoteP page');
   page = browser.contexts()[0].pages()[0];
   page.setDefaultTimeout(20000);
+  page.on('pageerror', error => console.error('Editor error:', error.message));
+  await page.evaluate(() => {
+    window.__nativeTestEvents = [];
+    chrome.webview.addEventListener('message', event => window.__nativeTestEvents.push(event.data));
+  });
   await page.waitForSelector('.document-tab');
   return page;
 }
@@ -201,8 +206,22 @@ async function close(force = false) {
     await close();
     console.log('Shared Windows integration: '+checks+' checks passed.');
     fs.writeFileSync(path.join(root,'build/screenshots/shared-'+label+'-checks.json'),JSON.stringify({version,checks},null,2));
+  } catch (error) {
+    if (page) {
+      try { console.error('Editor failure state:', JSON.stringify(await page.evaluate(() => ({
+        tabs: [...document.querySelectorAll('.document-tab')].map(tab => tab.textContent),
+        toast: document.getElementById('toast')?.textContent,
+        events: window.__nativeTestEvents
+      })))); } catch {}
+      try {
+        fs.mkdirSync(path.join(root,'build/screenshots'),{recursive:true});
+        await page.screenshot({path:path.join(root,'build/screenshots/shared-'+label+'-failure.png'),timeout:5000});
+      } catch {}
+    }
+    console.error('Local test files:', fs.readdirSync(workspace));
+    throw error;
   } finally {
-    if (child && !page) {
+    if (child) {
       try { console.error(execFileSync('python',[path.join(root,'native/windows-webview/dialog.py'),'inspect'],{encoding:'utf8',env:{...process.env,PYTHONUTF8:'1'}})); } catch {}
       try { console.error(execFileSync('powershell.exe',['-NoProfile','-Command','Get-CimInstance Win32_Process | Where-Object {$_.ParentProcessId -eq '+child.pid+'} | Select-Object ProcessId,CommandLine | Format-List'],{encoding:'utf8'})); } catch {}
     }
