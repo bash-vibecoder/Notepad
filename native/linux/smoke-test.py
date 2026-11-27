@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import time
@@ -76,9 +77,9 @@ def launch(assets, profile):
 
 
 def main():
-    assets = HOME / 'assets'
-    if not assets.exists():
-        assets = ROOT / 'app/src/main/assets'
+    assets = HOME / 'assets' if os.environ.get('ANOTEP_TEST_HOME') else ROOT / 'app/src/main/assets'
+    for file in (HOME / 'main.py', HOME / 'core.py', HOME / 'bridge.js', assets / 'index.html', assets / 'vendor/codemirror.js'):
+        assert file.is_file(), 'Missing packaged payload: ' + str(file)
     with tempfile.TemporaryDirectory(prefix='anotep-webkit-test-') as temporary:
         root = Path(temporary)
         source, saved = root / 'original.txt', root / 'saved-as.txt'
@@ -197,6 +198,25 @@ def main():
             check(js(editor, '!!document.querySelector(".document-tab.active .dirty")'), True, 'Recovered tab stays unsaved')
             # Existing Electron workspace.json has the same schema; no conversion.
             check(editor.workspace, profile / 'workspace.json', 'Existing workspace path retained')
+            # Exercise the real entrypoint and GTK event loop as well as the
+            # in-process bridge checks. No special test flag enters the app.
+            launcher = HOME / 'anotep'
+            command = [str(launcher)] if launcher.is_file() else ['/usr/bin/python3', str(HOME / 'main.py'), '--assets', str(assets)]
+            process = subprocess.Popen(command + ['--profile', str(root / 'launcher-profile'), str(source)],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                workspace = root / 'launcher-profile/workspace.json'
+                spin(lambda: workspace.is_file() or process.poll() is not None)
+                check(process.poll(), None, 'Real launcher starts the GTK event loop')
+                process.terminate()
+                check(process.wait(timeout=15), 0, 'Real launcher closes cleanly on SIGTERM')
+                state = json.loads(workspace.read_text())
+                check(any(d['text'] == 'Hello 🐧\nsecond line\n' for d in state['documents']),
+                      True, 'Command-line file open and final recovery write')
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait()
             print(f'Linux WebKit integration: {checks} checks passed.', flush=True)
         finally:
             editor.ready = False
