@@ -50,7 +50,7 @@ def synchronize(check=False):
         drift.append(str(path.relative_to(ROOT)))
         if not check:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
+            path.write_text(content, newline='\n')
     if check and drift:
         raise SystemExit('Version drift: ' + ', '.join(drift))
     print('Unified version ' + version + (' verified.' if check else ' synchronized.'))

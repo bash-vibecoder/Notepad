@@ -56,6 +56,9 @@ public:
 
     void error(const std::string& message)
     {
+        const auto diagnostic = "AnoteP: " + message + "\n";
+        DWORD written = 0;
+        WriteFile(GetStdHandle(STD_ERROR_HANDLE), diagnostic.data(), static_cast<DWORD>(diagnostic.size()), &written, nullptr);
         std::wstring value;
         try { value = wide(message); }
         catch (...) { value = L"The local operation failed. Your files have not been discarded."; }
@@ -378,7 +381,18 @@ public:
         require(profileLock != INVALID_HANDLE_VALUE, "This recovery profile is already in use or is not writable. Switch to the existing AnoteP window, or choose another --profile directory.");
         fs::create_directories(cache);
         auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-        options->put_AdditionalBrowserArguments(L"--disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --no-first-run --disable-local-storage");
+        std::wstring browserArguments = L"--disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --no-first-run --disable-local-storage";
+        // Honor the runtime's documented, user-supplied developer arguments.
+        // No debugging endpoint is enabled by the application itself.
+        DWORD argumentLength = GetEnvironmentVariableW(L"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", nullptr, 0);
+        if (argumentLength)
+        {
+            std::wstring additional(argumentLength, L'\0');
+            GetEnvironmentVariableW(L"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", additional.data(), argumentLength);
+            additional.resize(wcslen(additional.c_str()));
+            browserArguments += L" " + additional;
+        }
+        options->put_AdditionalBrowserArguments(browserArguments.c_str());
         const auto status = CreateCoreWebView2EnvironmentWithOptions(nullptr, cache.c_str(), options.Get(), Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [this](HRESULT status, ICoreWebView2Environment* created) -> HRESULT
             {

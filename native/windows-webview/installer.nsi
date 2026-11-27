@@ -19,6 +19,7 @@ VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "AnoteP"
 VIAddVersionKey "FileDescription" "AnoteP ${ARCH} installer"
 VIAddVersionKey "FileVersion" "${VERSION}"
+VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "LegalCopyright" "AnoteP contributors; MIT license"
 !define MUI_ABORTWARNING
 !insertmacro MUI_PAGE_WELCOME

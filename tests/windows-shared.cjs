@@ -44,7 +44,7 @@ async function launch() {
   await waitFor(async () => {
     if (child.exitCode !== null) throw new Error('AnoteP exited ' + child.exitCode + ': ' + diagnostic.join(''));
     try { return (await fetch('http://127.0.0.1:' + port + '/json/version')).ok; } catch { return false; }
-  }, 'WebView2 developer connection', 60000);
+  }, 'WebView2 developer connection', 60000).catch(error => { throw new Error(error.message + '\n' + diagnostic.join('')); });
   browser = await chromium.connectOverCDP('http://127.0.0.1:' + port);
   await waitFor(() => browser.contexts()[0]?.pages().length, 'AnoteP page');
   page = browser.contexts()[0].pages()[0];
@@ -202,8 +202,13 @@ async function close(force = false) {
     console.log('Shared Windows integration: '+checks+' checks passed.');
     fs.writeFileSync(path.join(root,'build/screenshots/shared-'+label+'-checks.json'),JSON.stringify({version,checks},null,2));
   } finally {
+    if (child && !page) {
+      try { console.error(execFileSync('python',[path.join(root,'native/windows-webview/dialog.py'),'inspect'],{encoding:'utf8',env:{...process.env,PYTHONUTF8:'1'}})); } catch {}
+      try { console.error(execFileSync('powershell.exe',['-NoProfile','-Command','Get-CimInstance Win32_Process | Where-Object {$_.ParentProcessId -eq '+child.pid+'} | Select-Object ProcessId,CommandLine | Format-List'],{encoding:'utf8'})); } catch {}
+    }
     if(child) { child.kill(); }
     if(browser) { try { await browser.close(); } catch {} }
-    fs.rmSync(temporary,{recursive:true,force:true,maxRetries:10,retryDelay:200});
+    try { fs.rmSync(temporary,{recursive:true,force:true,maxRetries:10,retryDelay:200}); }
+    catch { console.warn('Temporary WebView2 cache is still held by its exiting system process.'); }
   }
 })().catch(error=>{ console.error(error); process.exitCode=1; });

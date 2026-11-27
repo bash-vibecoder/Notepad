@@ -35,6 +35,14 @@ def windows(parent=None):
 
 
 def main():
+    if sys.argv[1] == 'inspect':
+        for hwnd in windows():
+            if user.IsWindowVisible(hwnd) and (text(hwnd, True) == 'AnoteP' or (text(hwnd, True) == '#32770' and 'AnoteP' in text(hwnd))):
+                print('WINDOW', text(hwnd, True), text(hwnd))
+                for child in windows(hwnd):
+                    if text(child):
+                        print('  CONTROL', text(child, True), user.GetDlgCtrlID(child), text(child)[:600])
+        return
     title, action = sys.argv[1:3]
     deadline = time.monotonic() + 25
     while time.monotonic() < deadline:
