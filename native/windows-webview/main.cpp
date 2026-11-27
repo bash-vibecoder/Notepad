@@ -80,7 +80,8 @@ public:
         validateWorkspace(state);
         fs::create_directories(profile);
         atomicWrite(profile / L"workspace.json", state.dump());
-        selectedFolder = state.value("settings", json::object()).value("folderUri", "");
+        // A queued pre-picker recovery snapshot must not revoke the current
+        // folder selection. Runtime access changes only at bootstrap/picker.
     }
 
     void bootstrap()
