@@ -10,13 +10,14 @@ import urllib.request
 
 REPOSITORY = os.environ['GITHUB_REPOSITORY']
 RELEASE_ID = int(os.environ['RELEASE_ID'])
+RELEASE_TAG = os.environ.get('RELEASE_TAG', 'v1.3.1')
 TOKEN = os.environ['GH_TOKEN']
 BASE = 'https://api.github.com/repos/' + REPOSITORY
-STAGE = Path('current-release')
+STAGE = Path('build/current-release')
 SOURCES = {
-    'v1.2.0': ['AnoteP-1.2.0-win-ia32.exe', 'AnoteP-1.2.0-win-x64.exe',
-               'AnoteP-1.2.0-win-ia32-portable.zip', 'AnoteP-1.2.0-win-x64-portable.zip',
-               'AnoteP-1.2.0-windows-source.zip'],
+    'v1.2.1': ['AnoteP-1.2.1-win-ia32.exe', 'AnoteP-1.2.1-win-x64.exe',
+               'AnoteP-1.2.1-win-ia32-portable.zip', 'AnoteP-1.2.1-win-x64-portable.zip',
+               'AnoteP-1.2.1-windows-source.zip'],
     'linux-v1.3.0': ['AnoteP-1.3.0-linux.deb', 'AnoteP-1.3.0-linux-portable.tar.xz'],
     'v1.1.0': ['AnoteP-v1.0.apk'],
 }
@@ -41,8 +42,8 @@ def digest(path):
 
 def main():
     target = api('/releases/' + str(RELEASE_ID))
-    assert target['draft'] and target['tag_name'] == 'v1.3.0', 'Expected the current consolidated draft'
-    STAGE.mkdir(exist_ok=True)
+    assert target['draft'] and target['tag_name'] == RELEASE_TAG, 'Expected the current consolidated draft'
+    STAGE.mkdir(parents=True, exist_ok=True)
     expected = {}
     for tag, names in SOURCES.items():
         source = api('/releases/tags/' + tag)
@@ -69,7 +70,7 @@ def main():
     sums = STAGE / 'SHA256SUMS.txt'
     sums.write_text(''.join(f'{digest(STAGE / name)}  {name}\n' for name in sorted(expected)))
     expected[sums.name] = {'size': sums.stat().st_size, 'digest': 'sha256:' + digest(sums)}
-    actual = {a['name']: a for a in target['assets']}
+    actual = {a['name']: a for a in api('/releases/' + str(RELEASE_ID))['assets']}
     assert actual.keys() <= expected.keys(), 'Draft contains unexpected/older assets'
     for name, asset in actual.items():
         assert asset['state'] == 'uploaded', 'Incomplete upload requires inspection: ' + name
@@ -92,7 +93,7 @@ def main():
     published = api('/releases/' + str(RELEASE_ID), 'PATCH', {'draft': False, 'make_latest': 'true'})
     assert not published['draft']
     assert api('/releases/latest')['id'] == RELEASE_ID
-    print('Published v1.3.0 as latest: all 9 files verified.', flush=True)
+    print('Published ' + RELEASE_TAG + ' as latest: all 9 files verified.', flush=True)
 
 
 if __name__ == '__main__':

@@ -56,6 +56,11 @@ def classname(hwnd):
     user.GetClassNameW(hwnd, buffer, len(buffer))
     return buffer.value
 
+def title(hwnd):
+    buffer = c.create_unicode_buffer(1024)
+    user.GetWindowTextW(hwnd, buffer, len(buffer))
+    return buffer.value
+
 def windows(pid, parent=None):
     result = []
     @callback_type
@@ -204,7 +209,7 @@ with tempfile.TemporaryDirectory(prefix='AnoteP native tests ') as directory:
         process, hwnd, editor, controls = launch(None, restore=True)
         remote = Remote(process.pid)
         wait_for(lambda: remote.text(editor) == scratch, 'unsaved scratch restored after normal restart')
-        check(bool(send(editor, 2159)), 'Restored scratch stays dirty and unsaved')
+        check(title(hwnd).startswith('*'), 'Restored scratch stays dirty and unsaved')
         periodic = 'periodic recovery after forced termination 🐧\r\n'
         remote.set_text(editor, periodic)
         wait_for(lambda: any(path.is_file() and path.read_text(encoding='utf-8-sig') == periodic.replace('\r\n', '\n') for path in backups),
