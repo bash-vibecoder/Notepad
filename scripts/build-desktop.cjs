@@ -4,7 +4,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 let args = process.argv.slice(2);
 if (process.platform === 'win32' || args.includes('--win')) {
-  if (process.platform !== 'win32') throw new Error('Build the small native Windows edition on Windows with native/windows/build.ps1 or the Windows CI workflow.');
+  if (process.platform !== 'win32') throw new Error('Build the shared Windows edition on Windows with native/windows-webview/build.ps1 or the Windows CI workflow.');
   const arch = args.includes('--ia32') ? 'ia32' : 'x64';
   const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'native/windows-webview/build.ps1'), '-Arch', arch], {cwd: root, stdio: 'inherit'});
   process.exit(result.status ?? 1);
