@@ -115,6 +115,10 @@ def main():
             js(editor, '(AnotePNative.dispatch(JSON.stringify({type:"chooseFolder"})), true)')
             wait_js(editor, '!!document.querySelector(".tree-node")')
             check(js(editor, '!document.getElementById("sidebar").hidden'), True, 'Native folder picker and browser')
+            stale = js(editor, 'App.captureWorkspace()')
+            stale['settings']['folderUri'] = ''
+            editor.remember(json.dumps(stale))
+            check(editor.selected_folder, root.as_uri(), 'Queued stale recovery preserves the active folder')
             run(editor, 'findInFiles')
             wait_js(editor, '!document.getElementById("dialogBackdrop").hidden')
             js(editor, '(document.querySelector("#dialogBody input[type=text]").value = "Hello", [...document.querySelectorAll("#dialogActions button")].find(b=>b.textContent==="Find All").click(), true)')

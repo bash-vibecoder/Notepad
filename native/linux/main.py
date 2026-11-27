@@ -115,8 +115,8 @@ class Editor:
         self.evaluate('window.__anotepReceive(' + json.dumps(event, ensure_ascii=True) + '); undefined;')
 
     def remember(self, raw):
-        state = core.save_workspace(self.workspace, raw)
-        self.selected_folder = state.get('settings', {}).get('folderUri', '')
+        core.save_workspace(self.workspace, raw)
+        # An older queued snapshot must not revoke the active picker selection.
 
     def bootstrap(self):
         state = {}
